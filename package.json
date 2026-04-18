@@ -1,0 +1,16 @@
+
+{
+  "name": "tac-agent",
+  "private": true,
+  "scripts": {
+    "dev": "next dev"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "ai": "latest",
+    "@ai-sdk/openai": "latest",
+    "zod": "latest"
+  }
+}
