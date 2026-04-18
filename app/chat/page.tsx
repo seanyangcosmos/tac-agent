@@ -1,8 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
 
 export default function ChatPage() {
@@ -48,40 +46,48 @@ export default function ChatPage() {
   return (
     <main className="min-h-screen bg-white flex flex-col items-center px-6 py-12">
       <div className="w-full max-w-3xl">
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-gray-500 hover:text-black transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
+          ← Back to Home
         </Link>
 
         <div className="mt-12 text-center">
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-black">
             TAC Agent Interface
           </h1>
         </div>
 
         <div className="mt-12">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-gray-500 mb-4">
             Ask a strategic decision question to evaluate structure before action.
           </p>
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Enter your decision question"
-            className="w-full h-40 p-4 text-lg border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-shadow"
+            className="w-full h-40 p-4 text-lg border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-black/20 transition-shadow"
           />
           <div className="mt-4">
-            <p className="text-sm text-muted-foreground mb-2">Examples:</p>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li className="cursor-pointer hover:text-foreground transition-colors" onClick={() => setQuery("Should a biotech startup prioritize speed or certainty?")}>
+            <p className="text-sm text-gray-500 mb-2">Examples:</p>
+            <ul className="text-sm text-gray-500 space-y-1">
+              <li
+                className="cursor-pointer hover:text-black transition-colors"
+                onClick={() => setQuery("Should a biotech startup prioritize speed or certainty?")}
+              >
                 Should a biotech startup prioritize speed or certainty?
               </li>
-              <li className="cursor-pointer hover:text-foreground transition-colors" onClick={() => setQuery("Should we expand now or wait for better market signals?")}>
+              <li
+                className="cursor-pointer hover:text-black transition-colors"
+                onClick={() => setQuery("Should we expand now or wait for better market signals?")}
+              >
                 Should we expand now or wait for better market signals?
               </li>
-              <li className="cursor-pointer hover:text-foreground transition-colors" onClick={() => setQuery("Should TAC-3D be positioned as a decision audit layer or reasoning engine?")}>
+              <li
+                className="cursor-pointer hover:text-black transition-colors"
+                onClick={() => setQuery("Should TAC-3D be positioned as a decision audit layer or reasoning engine?")}
+              >
                 Should TAC-3D be positioned as a decision audit layer or reasoning engine?
               </li>
             </ul>
@@ -89,44 +95,42 @@ export default function ChatPage() {
         </div>
 
         <div className="mt-6 flex justify-center">
-          <Button size="lg" className="min-w-[200px]" onClick={runAnalysis} disabled={isLoading || !query.trim()}>
+          <button
+            className="min-w-[200px] rounded-md bg-black px-6 py-3 text-white disabled:opacity-50"
+            onClick={runAnalysis}
+            disabled={isLoading || !query.trim()}
+          >
             {isLoading ? "Analyzing..." : "Run TAC Analysis"}
-          </Button>
+          </button>
         </div>
 
         <div className="mt-16 grid gap-8">
-          <section className="p-6 border border-border rounded-lg">
-            <h2 className="text-xl font-semibold text-foreground mb-1">
-              Alignment
-            </h2>
-            <p className="text-sm text-muted-foreground mb-3">
+          <section className="p-6 border rounded-lg">
+            <h2 className="text-xl font-semibold text-black mb-1">Alignment</h2>
+            <p className="text-sm text-gray-500 mb-3">
               Are your goals and constraints compatible?
             </p>
-            <p className="text-foreground">
+            <p className="text-black">
               {isLoading ? "Analyzing..." : results ? results.alignment : "Analysis results will appear here..."}
             </p>
           </section>
 
-          <section className="p-6 border border-border rounded-lg">
-            <h2 className="text-xl font-semibold text-foreground mb-1">
-              Tension
-            </h2>
-            <p className="text-sm text-muted-foreground mb-3">
+          <section className="p-6 border rounded-lg">
+            <h2 className="text-xl font-semibold text-black mb-1">Tension</h2>
+            <p className="text-sm text-gray-500 mb-3">
               What conflicts exist inside the decision structure?
             </p>
-            <p className="text-foreground">
+            <p className="text-black">
               {isLoading ? "Analyzing..." : results ? results.tension : "Analysis results will appear here..."}
             </p>
           </section>
 
-          <section className="p-6 border border-border rounded-lg">
-            <h2 className="text-xl font-semibold text-foreground mb-1">
-              Convergence
-            </h2>
-            <p className="text-sm text-muted-foreground mb-3">
+          <section className="p-6 border rounded-lg">
+            <h2 className="text-xl font-semibold text-black mb-1">Convergence</h2>
+            <p className="text-sm text-gray-500 mb-3">
               Can the decision realistically stabilize?
             </p>
-            <p className="text-foreground">
+            <p className="text-black">
               {isLoading ? "Analyzing..." : results ? results.convergence : "Analysis results will appear here..."}
             </p>
           </section>
@@ -135,4 +139,3 @@ export default function ChatPage() {
     </main>
   )
 }
-
