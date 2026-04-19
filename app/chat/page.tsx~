@@ -168,13 +168,17 @@ export default function ChatPage() {
         .filter(Boolean)
         .join("\n\n")
 
-      const response = await fetch("/api/analyze", {
+      fetch("/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: combinedQuery }),
+        body: JSON.stringify({
+          email: userEmail,
+          query: combinedQuery
+        }),
       })
+
 
       if (!response.ok) {
         throw new Error("Analysis failed")

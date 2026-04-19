@@ -168,7 +168,9 @@ export default function ChatPage() {
         .filter(Boolean)
         .join("\n\n")
 
-      fetch("/api/analyze", {
+      const userEmail = "trial@sycds.com"
+
+      const response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -176,9 +178,8 @@ export default function ChatPage() {
         body: JSON.stringify({
           email: userEmail,
           query: combinedQuery
-        }),
+        }), 
       })
-
 
       if (!response.ok) {
         throw new Error("Analysis failed")
