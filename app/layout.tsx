@@ -1,8 +1,9 @@
+import "./globals.css"
 import type { ReactNode } from "react"
 
 export const metadata = {
   title: "TAC Agent",
-  description: "Target Alignment Criteria Agent",
+  description: "Decision readiness interface",
 }
 
 export default function RootLayout({
