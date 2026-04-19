@@ -9,6 +9,28 @@ type AnalyzeResult = {
   convergence: number
   topology: string
   summary: string
+  structural_verdict?: string
+  key_conflicts?: string[]
+  key_conditions?: string[]
+}
+
+function topologyLabel(topology: string) {
+  switch (topology) {
+    case "aligned-convergent":
+      return "Ready"
+    case "convergence-under-tension":
+      return "Ready with tradeoffs"
+    case "partial-convergence":
+      return "Partially ready"
+    case "misaligned-unstable":
+      return "Not ready"
+    case "high-tension-fragile":
+      return "High conflict"
+    case "error":
+      return "Analysis error"
+    default:
+      return topology
+    }
 }
 
 export default function ChatPage() {
@@ -31,14 +53,15 @@ export default function ChatPage() {
       setTimeout(() => setActiveStep(2), 700),
       setTimeout(() => setActiveStep(3), 1400),
       setTimeout(() => setActiveStep(4), 2200),
+      setTimeout(() => setActiveStep(5), 2800),
     ]
 
     try {
       const combinedQuery = [
         query.trim(),
         context.trim() ? `Context: ${context.trim()}` : "",
-        layer1.trim() ? `Layer 1: ${layer1.trim()}` : "",
-        layer2.trim() ? `Layer 2: ${layer2.trim()}` : "",
+        layer1.trim() ? `Supporting factor: ${layer1.trim()}` : "",
+        layer2.trim() ? `Competing factor: ${layer2.trim()}` : "",
       ]
         .filter(Boolean)
         .join("\n\n")
@@ -56,7 +79,6 @@ export default function ChatPage() {
       }
 
       const data = await response.json()
-      setActiveStep(5)
       setResult(data)
     } catch (error) {
       console.error(error)
@@ -66,6 +88,7 @@ export default function ChatPage() {
         convergence: 0,
         topology: "error",
         summary: "Unable to complete analysis.",
+        structural_verdict: "Analysis unavailable",
       })
     } finally {
       timers.forEach(clearTimeout)
@@ -86,33 +109,8 @@ export default function ChatPage() {
     setActiveStep(0)
   }
 
-  const scoreWidth = (value: number) => `${Math.max(0, Math.min(100, value * 100))}%`
-
-  const verdictLabel =
-    result?.topology === "aligned-convergent"
-      ? "Aligned / Convergent"
-      : result?.topology === "high-tension-fragile"
-      ? "High Tension / Fragile"
-      : result?.topology === "misaligned-unstable"
-      ? "Misaligned / Unstable"
-      : result?.topology === "convergence-under-tension"
-      ? "Convergence Under Tension"
-      : result?.topology === "error"
-      ? "Analysis Error"
-      : "Partial Convergence"
-
-  const verdictTone =
-    result?.topology === "aligned-convergent"
-      ? "border-green-600 bg-green-50 text-green-700"
-      : result?.topology === "high-tension-fragile"
-      ? "border-red-600 bg-red-50 text-red-700"
-      : result?.topology === "misaligned-unstable"
-      ? "border-red-600 bg-red-50 text-red-700"
-      : result?.topology === "convergence-under-tension"
-      ? "border-blue-600 bg-blue-50 text-blue-700"
-      : result?.topology === "error"
-      ? "border-red-600 bg-red-50 text-red-700"
-      : "border-amber-600 bg-amber-50 text-amber-700"
+  const scoreWidth = (value: number) =>
+    `${Math.max(0, Math.min(100, value * 100))}%`
 
   return (
     <main className="min-h-screen bg-white text-black">
@@ -124,7 +122,7 @@ export default function ChatPage() {
             </div>
             <div className="h-4 w-px bg-gray-300" />
             <div className="text-xs text-gray-500">
-              Structural Decision Interface
+              Decision Readiness Interface
             </div>
           </div>
           <Link href="/" className="text-sm text-gray-500 hover:text-black">
@@ -136,16 +134,13 @@ export default function ChatPage() {
       <div className="mx-auto max-w-5xl px-6 py-12">
         <section className="py-6 text-center">
           <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-blue-700">
-            Structural Reliability Assessment
+            Universal Decision Interface
           </div>
           <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
-            Is your decision
-            <br />
-            structurally ready?
+            Is your decision ready to move forward?
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-7 text-gray-600">
-            Evaluate a decision through Alignment, Tension, and Convergence
-            before execution.
+            Check alignment, conflict, and execution readiness before acting.
           </p>
         </section>
 
@@ -158,7 +153,7 @@ export default function ChatPage() {
               Decision
             </div>
             <p className="mb-3 text-sm italic text-gray-500">
-              State the decision as a clear proposition.
+              Describe the decision you want to evaluate.
             </p>
             <textarea
               value={query}
@@ -173,53 +168,63 @@ export default function ChatPage() {
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
                 2
               </span>
-              Evidence Layers
+              Supporting factor <span className="normal-case tracking-normal font-normal">(optional)</span>
             </div>
             <p className="mb-3 text-sm italic text-gray-500">
-              Optional supporting signals or competing evidence.
+              Add evidence, assumptions, or considerations that support this decision.
             </p>
 
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-white">
-                <div className="border-b px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-gray-500">
-                  Layer 1
-                </div>
-                <textarea
-                  value={layer1}
-                  onChange={(e) => setLayer1(e.target.value)}
-                  placeholder="Add a first evidence layer..."
-                  className="min-h-[90px] w-full resize-y rounded-b-lg border-0 bg-white px-4 py-3 text-sm outline-none"
-                />
+            <div className="rounded-lg border bg-white">
+              <div className="border-b px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-gray-500">
+                Evidence Layer 1
               </div>
+              <textarea
+                value={layer1}
+                onChange={(e) => setLayer1(e.target.value)}
+                placeholder="Add a supporting factor..."
+                className="min-h-[90px] w-full resize-y rounded-b-lg border-0 bg-white px-4 py-3 text-sm outline-none"
+              />
+            </div>
+          </div>
 
-              <div className="rounded-lg border bg-white">
-                <div className="border-b px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-gray-500">
-                  Layer 2
-                </div>
-                <textarea
-                  value={layer2}
-                  onChange={(e) => setLayer2(e.target.value)}
-                  placeholder="Add a second evidence layer..."
-                  className="min-h-[90px] w-full resize-y rounded-b-lg border-0 bg-white px-4 py-3 text-sm outline-none"
-                />
+          <div className="border-b px-7 py-6">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
+                3
+              </span>
+              Competing factor <span className="normal-case tracking-normal font-normal">(optional)</span>
+            </div>
+            <p className="mb-3 text-sm italic text-gray-500">
+              Add risks, tradeoffs, or concerns that may affect the decision.
+            </p>
+
+            <div className="rounded-lg border bg-white">
+              <div className="border-b px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-gray-500">
+                Evidence Layer 2
               </div>
+              <textarea
+                value={layer2}
+                onChange={(e) => setLayer2(e.target.value)}
+                placeholder="Add a competing factor..."
+                className="min-h-[90px] w-full resize-y rounded-b-lg border-0 bg-white px-4 py-3 text-sm outline-none"
+              />
             </div>
           </div>
 
           <div className="px-7 py-6">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
-                3
+                4
               </span>
-              Context
+              Constraints or timing <span className="normal-case tracking-normal font-normal">(optional)</span>
             </div>
             <p className="mb-3 text-sm italic text-gray-500">
-              Optional execution conditions, constraints, or timing.
+              Add limits, deadlines, or external conditions.
             </p>
             <textarea
               value={context}
               onChange={(e) => setContext(e.target.value)}
-              placeholder="e.g. limited budget, near-term commercialization pressure, need for architectural clarity"
+              placeholder="e.g. limited budget, near-term timeline, external dependencies"
               className="min-h-[90px] w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
             />
           </div>
@@ -231,7 +236,7 @@ export default function ChatPage() {
             disabled={isLoading || !query.trim()}
             className="rounded-lg bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading ? "Running Analysis..." : "Run TAC Analysis"}
+            {isLoading ? "Analyzing..." : "Analyze Decision"}
           </button>
 
           <button
@@ -242,8 +247,8 @@ export default function ChatPage() {
           </button>
 
           <div className="text-sm leading-6 text-gray-500">
-            TAC Agent evaluates structural compatibility, internal tension, and
-            convergence stability.
+            TAC Agent helps you understand whether a decision is aligned,
+            conflicted, or ready to execute.
           </div>
         </div>
 
@@ -251,24 +256,24 @@ export default function ChatPage() {
           <section className="mt-8 rounded-xl border bg-gray-50 px-8 py-10 text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-blue-700" />
             <div className="mt-5 font-mono text-xs tracking-[0.1em] text-gray-500">
-              ANALYZING DECISION STRUCTURE
+              ANALYZING DECISION
             </div>
 
             <div className="mx-auto mt-6 max-w-sm space-y-2 text-left">
               <div className={activeStep >= 1 ? "text-blue-700" : "text-gray-400"}>
-                • Parsing decision structure
+                • Reading the decision
               </div>
               <div className={activeStep >= 2 ? "text-blue-700" : "text-gray-400"}>
-                • Measuring internal tension
+                • Checking alignment
               </div>
               <div className={activeStep >= 3 ? "text-blue-700" : "text-gray-400"}>
-                • Mapping directional alignment
+                • Measuring conflict
               </div>
               <div className={activeStep >= 4 ? "text-blue-700" : "text-gray-400"}>
-                • Testing convergence stability
+                • Testing readiness
               </div>
               <div className={activeStep >= 5 ? "text-blue-700" : "text-gray-400"}>
-                • Generating topology
+                • Generating result
               </div>
             </div>
           </section>
@@ -276,17 +281,21 @@ export default function ChatPage() {
 
         {result && !isLoading && (
           <section className="mt-8">
-            <div className={`mb-6 rounded-xl border px-6 py-5 ${verdictTone}`}>
+            <div className="mb-6 rounded-xl border border-blue-600 bg-blue-50 px-6 py-5 text-blue-700">
               <div className="mb-2 font-mono text-xs uppercase tracking-[0.14em]">
-                Structural Verdict
+                Decision Readiness
               </div>
-              <div className="text-xl font-semibold">{verdictLabel}</div>
-              <div className="mt-2 text-sm leading-6">{result.summary}</div>
+              <div className="text-2xl font-semibold">
+                {topologyLabel(result.topology)}
+              </div>
+              <div className="mt-2 text-sm leading-6 text-blue-700">
+                {result.structural_verdict || result.summary}
+              </div>
             </div>
 
             <div className="mb-6 rounded-xl border bg-gray-50 px-7 py-6">
               <div className="mb-5 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                Core Scores
+                Core Signals
               </div>
 
               <div className="space-y-5">
@@ -295,7 +304,7 @@ export default function ChatPage() {
                     <div>
                       <div className="font-medium">Alignment</div>
                       <div className="text-xs text-gray-500">
-                        Goal and constraint compatibility
+                        Do goals and constraints match?
                       </div>
                     </div>
                     <div className="font-mono text-sm">
@@ -313,9 +322,9 @@ export default function ChatPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <div>
-                      <div className="font-medium">Tension</div>
+                      <div className="font-medium">Conflict</div>
                       <div className="text-xs text-gray-500">
-                        Internal conflict and tradeoff density
+                        Are priorities competing?
                       </div>
                     </div>
                     <div className="font-mono text-sm">
@@ -333,9 +342,9 @@ export default function ChatPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <div>
-                      <div className="font-medium">Convergence</div>
+                      <div className="font-medium">Readiness</div>
                       <div className="text-xs text-gray-500">
-                        Probability of stabilization into execution
+                        Can this move forward?
                       </div>
                     </div>
                     <div className="font-mono text-sm">
@@ -355,21 +364,51 @@ export default function ChatPage() {
             <div className="space-y-4">
               <div className="rounded-xl border bg-gray-50">
                 <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                  Topology
+                  Decision Pattern
                 </div>
                 <div className="px-6 py-5 text-sm leading-7 text-gray-700">
-                  {result.topology}
+                  {topologyLabel(result.topology)}
                 </div>
               </div>
 
               <div className="rounded-xl border bg-gray-50">
                 <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                  Structural Interpretation
+                  What this means
                 </div>
                 <div className="px-6 py-5 text-sm leading-7 text-gray-700">
                   {result.summary}
                 </div>
               </div>
+
+              {result.key_conflicts && result.key_conflicts.length > 0 && (
+                <div className="rounded-xl border bg-gray-50">
+                  <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                    Key conflicts
+                  </div>
+                  <div className="px-6 py-5">
+                    <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                      {result.key_conflicts.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {result.key_conditions && result.key_conditions.length > 0 && (
+                <div className="rounded-xl border bg-gray-50">
+                  <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                    Conditions to watch
+                  </div>
+                  <div className="px-6 py-5">
+                    <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                      {result.key_conditions.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         )}
