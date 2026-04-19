@@ -1,16 +1,5 @@
 import { NextResponse } from "next/server"
 
-const FREE_LIMIT = 5
-
-const runs = Number(req.headers.get("x-runs") || "0")
-
-if (runs >= FREE_LIMIT) {
-  return NextResponse.json({
-    error: "limit reached",
-    upgrade: true,
-  })
-}
-
 type TacResult = {
   alignment: number
   tension: number

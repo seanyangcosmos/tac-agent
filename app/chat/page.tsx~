@@ -118,19 +118,6 @@ function SignalBar({
 }
 
 export default function ChatPage() {
-  const upgradeToPro = async () => {
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-    })
-
-    const data = await res.json()
-
-    if (data.url) {
-      window.location.href = data.url
-    }
-  }
-
-
   const [query, setQuery] = useState("")
   const [supportingSignals, setSupportingSignals] = useState("")
   const [risks, setRisks] = useState("")
@@ -317,14 +304,6 @@ export default function ChatPage() {
             >
               {isLoading ? "Analyzing..." : "Analyze Decision"}
             </button>
-
-            <button
-              onClick={upgradeToPro}
-              className="mt-4 px-5 py-2 rounded-lg bg-black text-white"
-            >
-              Upgrade to Pro ($29/month)
-            </button>
-
 
             <button
               onClick={resetAll}
