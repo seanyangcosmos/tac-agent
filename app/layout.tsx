@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 export const metadata = {
   title: "TAC Agent",
   description: "Target Alignment Criteria Agent",
@@ -6,7 +8,7 @@ export const metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="en">
