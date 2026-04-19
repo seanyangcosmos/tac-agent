@@ -1,15 +1,13 @@
 import Stripe from "stripe"
 import { headers } from "next/headers"
-import { NextResponse } from "next/server"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function POST(req: Request) {
   const body = await req.text()
+  const sig = headers().get("stripe-signature")!
 
-  const sig = (await headers()).get("stripe-signature")!
-
-  let event: Stripe.Event
+  let event
 
   try {
     event = stripe.webhooks.constructEvent(
@@ -18,16 +16,15 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     )
   } catch (err) {
-    console.error("Webhook signature verification failed.", err)
-    return NextResponse.json(
-      { error: "Webhook Error" },
-      { status: 400 }
-    )
+    return new Response("Webhook error", { status: 400 })
   }
 
   if (event.type === "checkout.session.completed") {
-    console.log("Subscription activated")
+    const session = event.data.object
+
+    console.log("User subscribed:", session.customer)
   }
 
-  return NextResponse.json({ received: true })
+  return new Response("ok")
 }
+
