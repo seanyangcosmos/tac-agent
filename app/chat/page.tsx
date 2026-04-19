@@ -30,7 +30,43 @@ function topologyLabel(topology: string) {
       return "Analysis error"
     default:
       return topology
-    }
+  }
+}
+
+function topologyDescription(topology: string) {
+  switch (topology) {
+    case "aligned-convergent":
+      return "Signals are aligned and converging toward execution."
+    case "convergence-under-tension":
+      return "Signals may still converge, but only under visible tension."
+    case "partial-convergence":
+      return "Signals are partially converging but not yet stable."
+    case "misaligned-unstable":
+      return "Signals are misaligned and structurally unstable."
+    case "high-tension-fragile":
+      return "Signals show high tension and fragile decision stability."
+    case "error":
+      return "The pattern could not be determined."
+    default:
+      return topology
+  }
+}
+
+function verdictEmoji(topology: string) {
+  switch (topology) {
+    case "aligned-convergent":
+      return "🟢"
+    case "convergence-under-tension":
+      return "🟡"
+    case "partial-convergence":
+      return "🟡"
+    case "misaligned-unstable":
+      return "🔴"
+    case "high-tension-fragile":
+      return "🔴"
+    default:
+      return "⚪"
+  }
 }
 
 export default function ChatPage() {
@@ -128,10 +164,6 @@ export default function ChatPage() {
             <div className="font-mono text-xs tracking-[0.18em] text-blue-700">
               TAC AGENT
             </div>
-            <div className="h-4 w-px bg-gray-300" />
-            <div className="text-xs text-gray-500">
-              Decision Readiness Interface
-            </div>
           </div>
 
           <Link href="/" className="text-sm text-gray-500 hover:text-black">
@@ -153,7 +185,7 @@ export default function ChatPage() {
           </p>
         </section>
 
-        <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="mx-auto mt-10 max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div>
             <label className="mb-3 block text-sm font-semibold text-gray-900">
               Decision
@@ -239,7 +271,7 @@ export default function ChatPage() {
         </section>
 
         {isLoading && (
-          <section className="mx-auto mt-8 max-w-3xl rounded-2xl border border-gray-200 bg-gray-50 px-8 py-10 text-center">
+          <section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-gray-200 bg-gray-50 px-8 py-10 text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-blue-700" />
             <div className="mt-5 font-mono text-xs tracking-[0.1em] text-gray-500">
               ANALYZING DECISION
@@ -253,10 +285,10 @@ export default function ChatPage() {
                 • Checking alignment
               </div>
               <div className={activeStep >= 3 ? "text-blue-700" : "text-gray-400"}>
-                • Measuring conflict
+                • Measuring tension
               </div>
               <div className={activeStep >= 4 ? "text-blue-700" : "text-gray-400"}>
-                • Testing readiness
+                • Testing convergence
               </div>
               <div className={activeStep >= 5 ? "text-blue-700" : "text-gray-400"}>
                 • Generating result
@@ -266,11 +298,11 @@ export default function ChatPage() {
         )}
 
         {result && !isLoading && (
-          <section className="mx-auto mt-8 max-w-3xl space-y-4">
-            <div className="rounded-2xl border border-blue-600 bg-blue-50 px-6 py-5 text-blue-700">
+          <section className="mx-auto mt-8 max-w-2xl space-y-4">
+            <div className="rounded-2xl border border-blue-300 bg-blue-50 px-6 py-5 text-blue-700">
               <div className="mb-2 text-sm font-semibold">Decision Readiness</div>
               <div className="text-2xl font-semibold">
-                {topologyLabel(result.topology)}
+                {verdictEmoji(result.topology)} {topologyLabel(result.topology)}
               </div>
               <div className="mt-2 text-sm leading-6">
                 {result.structural_verdict || result.summary}
@@ -306,7 +338,7 @@ export default function ChatPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <div>
-                      <div className="font-medium">Conflict</div>
+                      <div className="font-medium">Tension</div>
                       <div className="text-xs text-gray-500">
                         Are priorities competing?
                       </div>
@@ -326,7 +358,7 @@ export default function ChatPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <div>
-                      <div className="font-medium">Readiness</div>
+                      <div className="font-medium">Convergence</div>
                       <div className="text-xs text-gray-500">
                         Can this move forward?
                       </div>
@@ -350,7 +382,7 @@ export default function ChatPage() {
                 Decision Pattern
               </div>
               <div className="px-6 py-5 text-sm leading-7 text-gray-700">
-                {result.topology}
+                {topologyDescription(result.topology)}
               </div>
             </div>
 
