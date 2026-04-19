@@ -5,7 +5,7 @@ const FREE_LIMIT = 5
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
 
     const runsCookie = cookieStore.get("tac_runs")
     let runs = runsCookie ? parseInt(runsCookie.value) : 0
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     cookieStore.set("tac_runs", runs.toString(), {
       httpOnly: false,
       path: "/",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 30,
     })
 
     const body = await req.json()

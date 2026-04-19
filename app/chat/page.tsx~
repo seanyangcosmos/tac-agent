@@ -181,6 +181,12 @@ export default function ChatPage() {
       }
 
       const data = await response.json()
+      if (data.upgrade) {
+        alert(
+          "You have used your 5 free evaluations. Upgrade to Pro to continue. For broader decision services, visit sycds.com or contact service@sycds.com."
+        )
+        return
+      }
       setResult(data)
     } catch (error) {
       console.error(error)

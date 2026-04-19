@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 const FREE_LIMIT = 5
 
-let runs = 0
-
 export async function POST(req: Request) {
   try {
+    const cookieStore = cookies()
+
+    const runsCookie = cookieStore.get("tac_runs")
+    let runs = runsCookie ? parseInt(runsCookie.value) : 0
+
     if (runs >= FREE_LIMIT) {
       return NextResponse.json({
         error: "limit reached",
@@ -13,10 +17,15 @@ export async function POST(req: Request) {
       })
     }
 
-    runs++
+    runs += 1
+
+    cookieStore.set("tac_runs", runs.toString(), {
+      httpOnly: false,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    })
 
     const body = await req.json()
-
     const query = body.query || ""
 
     const result = {
