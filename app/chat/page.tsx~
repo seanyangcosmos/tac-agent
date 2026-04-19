@@ -118,6 +118,19 @@ function SignalBar({
 }
 
 export default function ChatPage() {
+  const upgradeToPro = async () => {
+    const res = await fetch("/api/checkout", {
+      method: "POST",
+    })
+
+    const data = await res.json()
+
+    if (data.url) {
+      window.location.href = data.url
+    }
+  }
+
+
   const [query, setQuery] = useState("")
   const [supportingSignals, setSupportingSignals] = useState("")
   const [risks, setRisks] = useState("")
@@ -306,6 +319,14 @@ export default function ChatPage() {
             </button>
 
             <button
+              onClick={upgradeToPro}
+              className="mt-4 px-5 py-2 rounded-lg bg-black text-white"
+            >
+              Upgrade to Pro ($29/month)
+            </button>
+
+
+            <button
               onClick={resetAll}
               className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 transition hover:border-gray-400 hover:text-black"
             >
@@ -314,8 +335,7 @@ export default function ChatPage() {
           </div>
 
           <p className="mt-4 text-sm leading-6 text-gray-500">
-            TAC Agent helps you understand whether a decision is aligned,
-            conflicted, or ready to execute.
+            TAC Agent helps you understand whether a decision is aligned, conflicted, or ready to execute. The first 5 evaluations are free.
           </p>
         </section>
 
