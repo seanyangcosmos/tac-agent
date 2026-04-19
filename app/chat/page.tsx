@@ -35,9 +35,10 @@ function topologyLabel(topology: string) {
 
 export default function ChatPage() {
   const [query, setQuery] = useState("")
-  const [context, setContext] = useState("")
-  const [layer1, setLayer1] = useState("")
-  const [layer2, setLayer2] = useState("")
+  const [supportingSignals, setSupportingSignals] = useState("")
+  const [risks, setRisks] = useState("")
+  const [constraints, setConstraints] = useState("")
+  const [showContext, setShowContext] = useState(false)
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
@@ -58,10 +59,14 @@ export default function ChatPage() {
 
     try {
       const combinedQuery = [
-        query.trim(),
-        context.trim() ? `Context: ${context.trim()}` : "",
-        layer1.trim() ? `Supporting factor: ${layer1.trim()}` : "",
-        layer2.trim() ? `Competing factor: ${layer2.trim()}` : "",
+        `Decision: ${query.trim()}`,
+        supportingSignals.trim()
+          ? `Supporting signals: ${supportingSignals.trim()}`
+          : "",
+        risks.trim() ? `Risks or tradeoffs: ${risks.trim()}` : "",
+        constraints.trim()
+          ? `Constraints or timing: ${constraints.trim()}`
+          : "",
       ]
         .filter(Boolean)
         .join("\n\n")
@@ -89,6 +94,8 @@ export default function ChatPage() {
         topology: "error",
         summary: "Unable to complete analysis.",
         structural_verdict: "Analysis unavailable",
+        key_conflicts: [],
+        key_conditions: [],
       })
     } finally {
       timers.forEach(clearTimeout)
@@ -101,9 +108,10 @@ export default function ChatPage() {
 
   const resetAll = () => {
     setQuery("")
-    setContext("")
-    setLayer1("")
-    setLayer2("")
+    setSupportingSignals("")
+    setRisks("")
+    setConstraints("")
+    setShowContext(false)
     setResult(null)
     setIsLoading(false)
     setActiveStep(0)
@@ -115,7 +123,7 @@ export default function ChatPage() {
   return (
     <main className="min-h-screen bg-white text-black">
       <div className="border-b px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
+        <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="font-mono text-xs tracking-[0.18em] text-blue-700">
               TAC AGENT
@@ -125,135 +133,113 @@ export default function ChatPage() {
               Decision Readiness Interface
             </div>
           </div>
+
           <Link href="/" className="text-sm text-gray-500 hover:text-black">
             ← Home
           </Link>
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-6 py-12">
-        <section className="py-6 text-center">
+      <div className="mx-auto max-w-4xl px-6 py-12">
+        <section className="mx-auto max-w-3xl text-center">
           <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-blue-700">
             Universal Decision Interface
           </div>
           <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
-            Is your decision ready to move forward?
+            What decision are you evaluating?
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-7 text-gray-600">
-            Check alignment, conflict, and execution readiness before acting.
+            Describe the situation. Add context if needed.
           </p>
         </section>
 
-        <section className="mt-8 rounded-xl border bg-gray-50">
-          <div className="border-b px-7 py-6">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
-                1
-              </span>
+        <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div>
+            <label className="mb-3 block text-sm font-semibold text-gray-900">
               Decision
-            </div>
-            <p className="mb-3 text-sm italic text-gray-500">
-              Describe the decision you want to evaluate.
-            </p>
+            </label>
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. Should TAC-3D be positioned as a decision audit layer or reasoning engine?"
-              className="min-h-[110px] w-full rounded-lg border bg-white px-4 py-3 text-[15px] outline-none focus:border-blue-600"
+              placeholder="Example: Should TAC-3D be positioned as a decision audit layer or a reasoning engine?"
+              className="min-h-[140px] w-full rounded-xl border border-gray-300 bg-white px-5 py-4 text-[16px] outline-none focus:border-blue-600"
             />
           </div>
 
-          <div className="border-b px-7 py-6">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
-                2
-              </span>
-              Supporting factor <span className="normal-case tracking-normal font-normal">(optional)</span>
-            </div>
-            <p className="mb-3 text-sm italic text-gray-500">
-              Add evidence, assumptions, or considerations that support this decision.
-            </p>
+          <div className="mt-4">
+            <button
+              onClick={() => setShowContext(!showContext)}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              {showContext ? "− Hide context" : "+ Add context (optional)"}
+            </button>
+          </div>
 
-            <div className="rounded-lg border bg-white">
-              <div className="border-b px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-gray-500">
-                Evidence Layer 1
+          {showContext && (
+            <div className="mt-5 space-y-5 rounded-xl border border-gray-200 bg-gray-50 p-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  What supports this decision?
+                </label>
+                <textarea
+                  value={supportingSignals}
+                  onChange={(e) => setSupportingSignals(e.target.value)}
+                  placeholder="Add evidence, assumptions, or factors in its favor..."
+                  className="min-h-[100px] w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] outline-none focus:border-blue-600"
+                />
               </div>
-              <textarea
-                value={layer1}
-                onChange={(e) => setLayer1(e.target.value)}
-                placeholder="Add a supporting factor..."
-                className="min-h-[90px] w-full resize-y rounded-b-lg border-0 bg-white px-4 py-3 text-sm outline-none"
-              />
-            </div>
-          </div>
 
-          <div className="border-b px-7 py-6">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
-                3
-              </span>
-              Competing factor <span className="normal-case tracking-normal font-normal">(optional)</span>
-            </div>
-            <p className="mb-3 text-sm italic text-gray-500">
-              Add risks, tradeoffs, or concerns that may affect the decision.
-            </p>
-
-            <div className="rounded-lg border bg-white">
-              <div className="border-b px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-gray-500">
-                Evidence Layer 2
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  What could work against it?
+                </label>
+                <textarea
+                  value={risks}
+                  onChange={(e) => setRisks(e.target.value)}
+                  placeholder="Add risks, tradeoffs, or concerns..."
+                  className="min-h-[100px] w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] outline-none focus:border-blue-600"
+                />
               </div>
-              <textarea
-                value={layer2}
-                onChange={(e) => setLayer2(e.target.value)}
-                placeholder="Add a competing factor..."
-                className="min-h-[90px] w-full resize-y rounded-b-lg border-0 bg-white px-4 py-3 text-sm outline-none"
-              />
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  Constraints or timing
+                </label>
+                <textarea
+                  value={constraints}
+                  onChange={(e) => setConstraints(e.target.value)}
+                  placeholder="Budget limits, deadlines, dependencies..."
+                  className="min-h-[100px] w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] outline-none focus:border-blue-600"
+                />
+              </div>
             </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <button
+              onClick={runAnalysis}
+              disabled={isLoading || !query.trim()}
+              className="rounded-xl bg-blue-700 px-8 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isLoading ? "Analyzing..." : "Analyze Decision"}
+            </button>
+
+            <button
+              onClick={resetAll}
+              className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 transition hover:border-gray-400 hover:text-black"
+            >
+              Reset
+            </button>
           </div>
 
-          <div className="px-7 py-6">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-600 bg-blue-50 font-mono text-[10px] text-blue-700">
-                4
-              </span>
-              Constraints or timing <span className="normal-case tracking-normal font-normal">(optional)</span>
-            </div>
-            <p className="mb-3 text-sm italic text-gray-500">
-              Add limits, deadlines, or external conditions.
-            </p>
-            <textarea
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              placeholder="e.g. limited budget, near-term timeline, external dependencies"
-              className="min-h-[90px] w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
-            />
-          </div>
-        </section>
-
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <button
-            onClick={runAnalysis}
-            disabled={isLoading || !query.trim()}
-            className="rounded-lg bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isLoading ? "Analyzing..." : "Analyze Decision"}
-          </button>
-
-          <button
-            onClick={resetAll}
-            className="rounded-lg border px-6 py-3 text-sm text-gray-600 transition hover:border-gray-400 hover:text-black"
-          >
-            Reset
-          </button>
-
-          <div className="text-sm leading-6 text-gray-500">
+          <p className="mt-4 text-sm leading-6 text-gray-500">
             TAC Agent helps you understand whether a decision is aligned,
             conflicted, or ready to execute.
-          </div>
-        </div>
+          </p>
+        </section>
 
         {isLoading && (
-          <section className="mt-8 rounded-xl border bg-gray-50 px-8 py-10 text-center">
+          <section className="mx-auto mt-8 max-w-3xl rounded-2xl border border-gray-200 bg-gray-50 px-8 py-10 text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-blue-700" />
             <div className="mt-5 font-mono text-xs tracking-[0.1em] text-gray-500">
               ANALYZING DECISION
@@ -280,21 +266,19 @@ export default function ChatPage() {
         )}
 
         {result && !isLoading && (
-          <section className="mt-8">
-            <div className="mb-6 rounded-xl border border-blue-600 bg-blue-50 px-6 py-5 text-blue-700">
-              <div className="mb-2 font-mono text-xs uppercase tracking-[0.14em]">
-                Decision Readiness
-              </div>
+          <section className="mx-auto mt-8 max-w-3xl space-y-4">
+            <div className="rounded-2xl border border-blue-600 bg-blue-50 px-6 py-5 text-blue-700">
+              <div className="mb-2 text-sm font-semibold">Decision Readiness</div>
               <div className="text-2xl font-semibold">
                 {topologyLabel(result.topology)}
               </div>
-              <div className="mt-2 text-sm leading-6 text-blue-700">
+              <div className="mt-2 text-sm leading-6">
                 {result.structural_verdict || result.summary}
               </div>
             </div>
 
-            <div className="mb-6 rounded-xl border bg-gray-50 px-7 py-6">
-              <div className="mb-5 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+            <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm">
+              <div className="mb-5 text-sm font-semibold text-gray-900">
                 Core Signals
               </div>
 
@@ -361,55 +345,53 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-xl border bg-gray-50">
-                <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                  Decision Pattern
-                </div>
-                <div className="px-6 py-5 text-sm leading-7 text-gray-700">
-                  {topologyLabel(result.topology)}
-                </div>
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b px-6 py-4 text-sm font-semibold text-gray-900">
+                Decision Pattern
               </div>
-
-              <div className="rounded-xl border bg-gray-50">
-                <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                  What this means
-                </div>
-                <div className="px-6 py-5 text-sm leading-7 text-gray-700">
-                  {result.summary}
-                </div>
+              <div className="px-6 py-5 text-sm leading-7 text-gray-700">
+                {result.topology}
               </div>
-
-              {result.key_conflicts && result.key_conflicts.length > 0 && (
-                <div className="rounded-xl border bg-gray-50">
-                  <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                    Key conflicts
-                  </div>
-                  <div className="px-6 py-5">
-                    <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
-                      {result.key_conflicts.map((item, index) => (
-                        <li key={index}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {result.key_conditions && result.key_conditions.length > 0 && (
-                <div className="rounded-xl border bg-gray-50">
-                  <div className="border-b px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                    Conditions to watch
-                  </div>
-                  <div className="px-6 py-5">
-                    <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
-                      {result.key_conditions.map((item, index) => (
-                        <li key={index}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
             </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b px-6 py-4 text-sm font-semibold text-gray-900">
+                What this means
+              </div>
+              <div className="px-6 py-5 text-sm leading-7 text-gray-700">
+                {result.summary}
+              </div>
+            </div>
+
+            {result.key_conflicts && result.key_conflicts.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="border-b px-6 py-4 text-sm font-semibold text-gray-900">
+                  Key conflicts
+                </div>
+                <div className="px-6 py-5">
+                  <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                    {result.key_conflicts.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {result.key_conditions && result.key_conditions.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="border-b px-6 py-4 text-sm font-semibold text-gray-900">
+                  What needs attention
+                </div>
+                <div className="px-6 py-5">
+                  <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-gray-700">
+                    {result.key_conditions.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </section>
         )}
       </div>
