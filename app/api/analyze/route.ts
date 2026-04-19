@@ -1,14 +1,37 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import fs from "fs"
+import path from "path"
 
 const FREE_LIMIT = 5
+const DB_PATH = path.join(process.cwd(), "email_runs.json")
+
+function loadDB() {
+  if (!fs.existsSync(DB_PATH)) {
+    fs.writeFileSync(DB_PATH, JSON.stringify({}))
+  }
+  return JSON.parse(fs.readFileSync(DB_PATH, "utf-8"))
+}
+
+function saveDB(db: any) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2))
+}
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies()
+    const body = await req.json()
+    const email = body.email
+    const query = body.query || ""
 
-    const runsCookie = cookieStore.get("tac_runs")
-    let runs = runsCookie ? parseInt(runsCookie.value) : 0
+    if (!email) {
+      return NextResponse.json(
+        { error: "email required" },
+        { status: 400 }
+      )
+    }
+
+    const db = loadDB()
+
+    let runs = db[email] || 0
 
     if (runs >= FREE_LIMIT) {
       return NextResponse.json({
@@ -18,15 +41,8 @@ export async function POST(req: Request) {
     }
 
     runs += 1
-
-    cookieStore.set("tac_runs", runs.toString(), {
-      httpOnly: false,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    })
-
-    const body = await req.json()
-    const query = body.query || ""
+    db[email] = runs
+    saveDB(db)
 
     const result = {
       decision: query,
