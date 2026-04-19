@@ -335,8 +335,7 @@ export default function ChatPage() {
           </div>
 
           <p className="mt-4 text-sm leading-6 text-gray-500">
-            TAC Agent helps you understand whether a decision is aligned,
-            conflicted, or ready to execute.
+            TAC Agent helps you understand whether a decision is aligned, conflicted, or ready to execute. The first 5 evaluations are free.
           </p>
         </section>
 
