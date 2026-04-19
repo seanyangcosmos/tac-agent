@@ -181,10 +181,6 @@ export default function ChatPage() {
         }), 
       })
 
-      if (!response.ok) {
-        throw new Error("Analysis failed")
-      }
-
       const data = await response.json()
 
       if (data.upgrade) {
@@ -194,6 +190,10 @@ export default function ChatPage() {
           "Contact:\nservice@sycds.com"
         )
         return
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Analysis failed")
       }
 
       setResult(data)
