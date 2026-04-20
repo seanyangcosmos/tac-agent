@@ -8,6 +8,7 @@ type AnalyzeResult = {
   tension: number
   convergence: number
   topology: string
+  recommendation: string
   summary: string
 }
 
