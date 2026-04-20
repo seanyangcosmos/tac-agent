@@ -48,6 +48,11 @@ export default function ChatPage() {
       ].join("\n")
 
       const email = localStorage.getItem("email") || "sean4128@gmail.com"
+      const [query, setQuery] = useState("")
+      const [support, setSupport] = useState("")
+      const [risks, setRisks] = useState("")
+      const [constraints, setConstraints] = useState("")
+
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
