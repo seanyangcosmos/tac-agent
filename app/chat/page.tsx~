@@ -103,6 +103,14 @@ export default function ChatPage() {
     }
   }
 
+  function scoreLabel(value: number) {
+    if (value >= 0.75) return "Strong" 
+    if (value >= 0.5) return "Moderate"
+    if (value >= 0.25) return "Limited"
+    return "Low"
+  }
+
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
 
@@ -203,19 +211,19 @@ export default function ChatPage() {
             <li>
               <strong>Goal fit:</strong> Does this goal match your current situation?
               <br />
-              Score: {result.alignment.toFixed(2)}
+              Assessment: {scoreLabel(result.alignment)}
             </li>
 
             <li>
               <strong>Risks:</strong> Are there conflicts or uncertainties that could slow progress?
               <br />
-              Score: {result.tension.toFixed(2)}
+              Assessment: {scoreLabel(result.tension)}
             </li>
 
             <li>
               <strong>Ready now?</strong> Is this stable enough to act on today?
               <br />
-              Score: {result.convergence.toFixed(2)}
+              Assessment: {scoreLabel(result.convergence)}
             </li>
 
           </ul>
