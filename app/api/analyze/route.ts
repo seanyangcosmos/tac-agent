@@ -1,115 +1,132 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import OpenAI from "openai"
-
-const FREE_LIMIT = 5
-
-const UNLIMITED_EMAILS = [
-  "sean4128@gmail.com"
-]
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
-export async function POST(req: Request) {
-  try {
-    const cookieStore = await cookies()
+function deriveRecommendation(alignment: number, tension: number, convergence: number) {
+  if (alignment >= 7 && convergence >= 7 && tension <= 6) {
+    return "Proceed"
+  }
 
-    const runsCookie = cookieStore.get("tac_runs")
-    let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
+  if (alignment >= 7 && tension >= 7) {
+    return "Needs clarity"
+  }
 
-    const body = await req.json()
+  if (convergence <= 5) {
+    return "Wait"
+  }
 
-    const email = String(body?.email || "")
-      .toLowerCase()
-      .trim()
+  if (alignment <= 4) {
+    return "Do not proceed"
+  }
 
-    const decisions = Array.isArray(body?.decisions)
-      ? body.decisions
-      : body?.query
-      ? [
-          {
-            query: body.query,
-            support: body.support || "",
-            risks: body.risks || "",
-            constraints: body.constraints || ""
-          }
-        ]
-      : []
-
-    if (
-      !UNLIMITED_EMAILS.includes(email) &&
-      runs >= FREE_LIMIT
-    ) {
-      return NextResponse.json(
-        {
-          error: "limit reached",
-          upgrade: true
-        },
-        { status: 403 }
-      )
-    }
-
-    runs += 1
-
-    const tacPrompt = `
-You are a TAC decision engine.
-
-Evaluate the following decisions using three axes:
-
-Alignment (goal fit)
-Tension (risk/conflict)
-Convergence (readiness)
-
-Return JSON only:
-
-{
-alignment: number,
-tension: number,
-convergence: number,
-topology: string,
-recommendation: string,
-summary: string
+  return "Needs clarity"
 }
 
-Decisions:
+function deriveTopology(alignment: number, tension: number, convergence: number) {
+  if (alignment >= 7 && convergence >= 7 && tension <= 6) {
+    return "stable_alignment"
+  }
 
-${JSON.stringify(decisions, null, 2)}
+  if (alignment >= 7 && tension >= 7) {
+    return "hidden_conflict"
+  }
+
+  if (convergence <= 5) {
+    return "low_readiness"
+  }
+
+  if (alignment <= 4) {
+    return "misaligned_goal"
+  }
+
+  return "uncertain_structure"
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+
+    const tacPrompt = `
+Evaluate this decision using TAC criteria.
+
+Return JSON:
+
+{
+  "alignment": number (0-10),
+  "tension": number (0-10),
+  "convergence": number (0-10),
+  "summary": string
+}
+
+Decision:
+
+${body.decision}
+
+Background:
+
+${body.background || "None"}
+
+Risks:
+
+${body.risks || "None"}
+
+Constraints:
+
+${body.constraints || "None"}
 `
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content: "Return valid JSON only. No markdown. No explanation."
-          },
-          {
-            role: "user",
-            content: tacPrompt
-          }
-        ],
-        response_format: { type: "json_object" }
-      })
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: "Return valid JSON only."
+        },
+        {
+          role: "user",
+          content: tacPrompt
+        }
+      ],
+      response_format: { type: "json_object" }
+    })
 
-      console.log(completion.choices[0].message.content)
+    const raw = completion.choices[0].message.content || "{}"
+    const parsed = JSON.parse(raw)
 
-      const result = JSON.parse(
-        completion.choices[0].message.content || "{}"
-      )
-    return NextResponse.json(result)
+    const alignment = parsed.alignment ?? 5
+    const tension = parsed.tension ?? 5
+    const convergence = parsed.convergence ?? 5
+
+    const topology = deriveTopology(
+      alignment,
+      tension,
+      convergence
+    )
+
+    const recommendation = deriveRecommendation(
+      alignment,
+      tension,
+      convergence
+    )
+
+    return NextResponse.json({
+      alignment,
+      tension,
+      convergence,
+      topology,
+      recommendation,
+      summary: parsed.summary || ""
+    })
 
   } catch (err) {
     console.error(err)
 
-    return NextResponse.json(
-      {
-        error: "analysis failed"
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      error: "Analysis unavailable"
+    })
   }
 }
-
