@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 
 const FREE_LIMIT = 5
+const UNLIMITED_EMAILS = ["sean4128@gmail.com"]
 
 export async function POST(req: Request) {
   try {
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
     const runsCookie = cookieStore.get("tac_runs")
     let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
 
-    if (runs >= FREE_LIMIT) {
+    if (!UNLIMITED_EMAILS.includes(email) && runs >= FREE_LIMIT) {
       return NextResponse.json(
         {
           error: "limit reached",
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const query = body.query || ""
+    const email = body.email || ""
 
     runs += 1
 
