@@ -43,7 +43,7 @@ export default function ChatPage() {
         layer2.trim() ? `Risks: ${layer2.trim()}` : "",
       ].join("\n")
 
-    const email = localStorage.getItem("email") || ""
+    const email = localStorage.getItem("email") || "sean4128@gmail.com"
     const support = ""
     const risks = ""
     const constraints = ""
