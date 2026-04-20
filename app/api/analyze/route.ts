@@ -5,21 +5,29 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
-function deriveRecommendation(alignment: number, tension: number, convergence: number) {
-  if (alignment >= 7 && convergence >= 7 && tension <= 6) {
-    return "Proceed"
+function deriveRecommendation(
+  alignment: number,
+  tension: number,
+  convergence: number
+) {
+  // 強 misalignment
+  if (alignment <= 4 && convergence <= 4) {
+    return "Do not proceed"
   }
 
-  if (alignment >= 7 && tension >= 7) {
+  // 高 tension
+  if (tension >= 7) {
     return "Needs clarity"
   }
 
+  // readiness 不足
   if (convergence <= 5) {
     return "Wait"
   }
 
-  if (alignment <= 4) {
-    return "Do not proceed"
+  // 穩定可執行
+  if (alignment >= 7 && convergence >= 7 && tension <= 6) {
+    return "Proceed"
   }
 
   return "Needs clarity"
