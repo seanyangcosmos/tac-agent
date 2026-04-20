@@ -175,10 +175,10 @@ Background:
 ${background || "None"}
 
 Risks:
-${risks || "None"}
+${risk || "None"}
 
 Constraints:
-${constraints || "None"}
+${constraint || "None"}
 `.trim()
 
     const completion = await openai.chat.completions.create({
