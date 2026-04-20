@@ -20,7 +20,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
 
-  const userEmail = "trial@sycds.com"
+  const userEmail = "sean4128@gmail.com"
 
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
