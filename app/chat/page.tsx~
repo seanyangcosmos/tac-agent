@@ -209,19 +209,19 @@ export default function ChatPage() {
           <ul className="space-y-2 text-gray-700">
 
             <li>
-              <strong>Goal fit:</strong> Does this goal match your current situation?
+              <strong>Goal fit(Alignment):</strong> Does this goal match your current situation?
               <br />
               Assessment: {scoreLabel(result.alignment)}
             </li>
 
             <li>
-              <strong>Risks:</strong> Are there conflicts or uncertainties that could slow progress?
+              <strong>Risks(Tension):</strong> Are there conflicts or uncertainties that could slow progress?
               <br />
               Assessment: {scoreLabel(result.tension)}
             </li>
 
             <li>
-              <strong>Ready now?</strong> Is this stable enough to act on today?
+              <strong>Ready now?(Convergence)</strong> Is this stable enough to act on today?
               <br />
               Assessment: {scoreLabel(result.convergence)}
             </li>

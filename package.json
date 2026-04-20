@@ -11,6 +11,7 @@
     "@ai-sdk/openai": "latest",
     "ai": "latest",
     "next": "latest",
+    "openai": "^6.34.0",
     "react": "latest",
     "react-dom": "latest",
     "stripe": "^22.0.2",
