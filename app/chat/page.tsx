@@ -10,6 +10,9 @@ type AnalyzeResult = {
   topology: string
   recommendation: string
   summary: string
+  has_enough_context: boolean
+  missing_condition: string
+  follow_up_question: string
 }
 
 export default function ChatPage() {
@@ -44,27 +47,20 @@ export default function ChatPage() {
         layer2.trim() ? `Risks: ${layer2.trim()}` : "",
       ].join("\n")
 
-    const email = localStorage.getItem("email") || "sean4128@gmail.com"
-    const support = ""
-    const risks = ""
-    const constraints = ""
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email,
-        decisions: [
-          {
-            query,
-            support,
-            risks,
-            constraints
-          }
-        ]
+      const email = localStorage.getItem("email") || "sean4128@gmail.com"
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          decision: query,
+          background: support,
+          risks,
+          constraints,
+        }),
       })
-    })
 
       const data = await response.json()
 
@@ -74,7 +70,6 @@ export default function ChatPage() {
             "Continue using TAC-3D here:\nhttps://sycds.com\n\n" +
             "Or contact:\nservice@sycds.com"
         )
-        setIsLoading(false)
         return
       }
 
@@ -190,7 +185,15 @@ export default function ChatPage() {
           <p className="text-lg mb-4">
             {result.recommendation}
           </p>
-
+          {result.recommendation === "One key condition missing" && (
+            <div className="mt-4 rounded-lg border p-4">
+              <h3 className="font-semibold mb-2">One more thing needed</h3>
+              <p className="mb-2">
+                Missing condition: {result.missing_condition}
+              </p>
+              <p>{result.follow_up_question}</p>
+            </div>
+          )}
           <h3 className="font-semibold mt-6 mb-2">
             Why this result
           </h3>
