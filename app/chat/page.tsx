@@ -99,20 +99,6 @@ export default function ChatPage() {
     setResult(null)
   }
 
-  const getRecommendation = (topology: string) => {
-    switch (topology) {
-      case "aligned-convergent":
-        return "Ready now"
-      case "convergence-under-tension":
-        return "Ready, but start small"
-      case "misaligned-unstable":
-        return "Not ready yet"
-      case "high-tension-fragile":
-        return "Too risky right now"
-      default:
-        return "Needs more clarity"
-    }
-  }
 
   function scoreLabel(value: number) {
     if (value >= 0.75) return "Strong" 
@@ -201,7 +187,7 @@ export default function ChatPage() {
           </h2>
 
           <p className="text-lg mb-4">
-            {getRecommendation(result.topology)}
+            {result.recommendation}
           </p>
 
           <h3 className="font-semibold mt-6 mb-2">
