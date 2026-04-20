@@ -43,6 +43,8 @@ export default function ChatPage() {
         layer2.trim() ? `Risks: ${layer2.trim()}` : "",
       ].join("\n")
 
+    const email = localStorage.getItem("email") || ""
+
     const response = await fetch("/api/analyze", {
       method: "POST",
       headers: {
