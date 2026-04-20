@@ -10,6 +10,8 @@ function deriveRecommendation(
   tension: number,
   convergence: number
 ) {
+
+  console.log("NEW RULE ENGINE ACTIVE")
   // 強 misalignment
   if (alignment <= 4 && convergence <= 4) {
     return "Do not proceed"
