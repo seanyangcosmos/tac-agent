@@ -1,59 +1,215 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import OpenAI from "openai"
 
 const FREE_LIMIT = 5
 
 const UNLIMITED_EMAILS = [
-  "sean4128@gmail.com"
+  "sean4128@gmail.com",
 ]
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
+
+type DecisionInput = {
+  query: string
+  support?: string
+  risks?: string
+  constraints?: string
+}
+
+type TacResult = {
+  alignment: number
+  tension: number
+  convergence: number
+  topology: string
+  recommendation: string
+  summary: string
+}
+
+function clampScore(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value)
+  if (Number.isNaN(n)) return 0
+  return Math.max(0, Math.min(1, n))
+}
+
+function normalizeResult(raw: any): TacResult {
+  return {
+    alignment: clampScore(raw?.alignment),
+    tension: clampScore(raw?.tension),
+    convergence: clampScore(raw?.convergence),
+    topology: String(raw?.topology || "needs-clarity"),
+    recommendation: String(raw?.recommendation || "Needs more clarity"),
+    summary: String(
+      raw?.summary ||
+        "The decision needs more clarification before moving forward."
+    ),
+  }
+}
+
+async function evaluateDecisionWithGPT(
+  decision: DecisionInput
+): Promise<TacResult> {
+  const prompt = `
+You are a TAC (Target Alignment Criteria) decision evaluator.
+
+Evaluate the following decision using three axes:
+
+1. Alignment = does the goal fit the actual situation?
+2. Tension = how much conflict, fragility, concentration risk, or uncertainty exists?
+3. Convergence = how ready this decision is for execution now?
+
+Rules:
+
+- High tension should reduce convergence
+- "All-in", "single dependency", "no fallback", "irreversible risk" increase tension strongly
+- Convergence reflects readiness NOW, not theoretical correctness
+- Scores must be between 0 and 1
+- Return JSON only
+
+Topology labels allowed:
+
+aligned-convergent
+convergence-under-tension
+misaligned-unstable
+high-tension-fragile
+needs-clarity
+
+Return EXACT JSON format:
+
+{
+  "alignment": number,
+  "tension": number,
+  "convergence": number,
+  "topology": string,
+  "recommendation": string,
+  "summary": string
+}
+
+Decision:
+${decision.query}
+
+Support:
+${decision.support || ""}
+
+Risks:
+${decision.risks || ""}
+
+Constraints:
+${decision.constraints || ""}
+`.trim()
+
+  const response = await openai.responses.create({
+    model: "gpt-4o",
+    input: prompt,
+    temperature: 0.2,
+  })
+
+  const text = response.output_text?.trim()
+
+  if (!text) {
+    throw new Error("Empty GPT response")
+  }
+
+  let parsed
+
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error("GPT returned non-JSON output")
+  }
+
+  return normalizeResult(parsed)
+}
 
 export async function POST(req: Request) {
   try {
 
-    const cookieStore = await cookies()
+    const body = await req.json()
 
+    let decisions = body.decisions
+
+    if (!decisions && body.query) {
+      decisions = [
+        {
+          query: body.query,
+          support: body.support || "",
+          risks: body.risks || "",
+          constraints: body.constraints || ""
+        }
+      ]
+    }
+    const cookieStore = await cookies()
     const runsCookie = cookieStore.get("tac_runs")
     let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
 
     const body = await req.json()
 
-    const query = body.query || ""
-    const email = body.email || ""
+    const email = String(body?.email || "").toLowerCase().trim()
+    const decisions = Array.isArray(body?.decisions)
+      ? body.decisions
+      : []
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "email required" },
+        { status: 400 }
+      )
+    }
+
+    if (decisions.length < 1 || decisions.length > 4) {
+      return NextResponse.json(
+        { error: "Submit between 1 and 4 decisions." },
+        { status: 400 }
+      )
+    }
+
+    const cleaned = decisions.map((d: any) => ({
+      query: String(d?.query || "").trim(),
+      support: String(d?.support || "").trim(),
+      risks: String(d?.risks || "").trim(),
+      constraints: String(d?.constraints || "").trim(),
+    }))
+
+    if (cleaned.some((d) => !d.query)) {
+      return NextResponse.json(
+        { error: "Each decision must include a query." },
+        { status: 400 }
+      )
+    }
 
     if (!UNLIMITED_EMAILS.includes(email) && runs >= FREE_LIMIT) {
       return NextResponse.json(
         {
           error: "limit reached",
-          upgrade: true
+          upgrade: true,
         },
         { status: 403 }
       )
     }
 
-    runs += 1
+    const results = await Promise.all(
+      cleaned.map((decision) =>
+        evaluateDecisionWithGPT(decision)
+      )
+    )
 
-    const result = {
-      alignment: Math.random(),
-      tension: Math.random(),
-      convergence: Math.random(),
-      topology: "convergence-under-tension",
-      summary:
-        "This decision could move forward, but a smaller first step would reduce risk."
+    if (!UNLIMITED_EMAILS.includes(email)) {
+      runs += 1
     }
 
-    const response = NextResponse.json(result)
+    const response = NextResponse.json({ results })
 
     response.cookies.set("tac_runs", runs.toString(), {
       httpOnly: false,
       path: "/",
-      maxAge: 60 * 60 * 24 * 30
+      maxAge: 60 * 60 * 24 * 30,
     })
 
     return response
-
-  } catch (error) {
-
-    console.error("analyze route error:", error)
+  } catch (err) {
+    console.error("analysis error:", err)
 
     return NextResponse.json(
       { error: "analysis failed" },

@@ -49,11 +49,16 @@ export default function ChatPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: userEmail,
-          query: combinedQuery,
-        }),
-      })
-
+          email,
+          decisions: [
+            {
+              query,
+              support,
+              risks,
+              constraints
+            }
+          ]
+        })
       const data = await response.json()
 
       if (data.upgrade) {
