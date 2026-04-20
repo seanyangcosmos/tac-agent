@@ -17,14 +17,12 @@ type AnalyzeResult = {
 
 export default function ChatPage() {
   const [query, setQuery] = useState("")
-  const [context, setContext] = useState("")
-  const [layer1, setLayer1] = useState("")
-  const [layer2, setLayer2] = useState("")
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
-
-  const userEmail = "sean4128@gmail.com"
+  const [support, setSupport] = useState("")
+  const [risks, setRisks] = useState("")
+  const [constraints, setConstraints] = useState("")
 
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
@@ -40,18 +38,8 @@ export default function ChatPage() {
     ]
 
     try {
-      const combinedQuery = [
-        query.trim(),
-        context.trim() ? `Context: ${context.trim()}` : "",
-        layer1.trim() ? `Support: ${layer1.trim()}` : "",
-        layer2.trim() ? `Risks: ${layer2.trim()}` : "",
-      ].join("\n")
 
       const email = localStorage.getItem("email") || "sean4128@gmail.com"
-      const [query, setQuery] = useState("")
-      const [support, setSupport] = useState("")
-      const [risks, setRisks] = useState("")
-      const [constraints, setConstraints] = useState("")
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -70,14 +58,9 @@ export default function ChatPage() {
       const data = await response.json()
 
       if (data.upgrade) {
-        alert(
-          "You've used your 5 free evaluations.\n\n" +
-            "Continue using TAC-3D here:\nhttps://sycds.com\n\n" +
-            "Or contact:\nservice@sycds.com"
-        )
+        window.open("https://sycds.com", "_blank")
         return
       }
-
       if (!response.ok) {
         throw new Error(data.error || "Analysis failed")
       }
@@ -94,20 +77,18 @@ export default function ChatPage() {
 
   const resetForm = () => {
     setQuery("")
-    setContext("")
-    setLayer1("")
-    setLayer2("")
+    setSupport("")
+    setRisks("")
+    setConstraints("")
     setResult(null)
   }
 
-
   function scoreLabel(value: number) {
-    if (value >= 0.75) return "Strong" 
-    if (value >= 0.5) return "Moderate"
-    if (value >= 0.25) return "Limited"
+    if (value >= 8) return "Strong"
+    if (value >= 5) return "Moderate"
+    if (value >= 3) return "Limited"
     return "Low"
   }
-
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
@@ -160,13 +141,12 @@ export default function ChatPage() {
           Reset
         </button>
 
-        <Link
-          href="https://sycds.com"
+        <button
+          onClick={() => window.open("https://sycds.com", "_blank")}
           className="border px-6 py-3 rounded-lg"
         >
           Upgrade to Pro ($29/month)
-        </Link>
-
+        </button>
       </div>
 
       <p className="text-gray-600 text-sm mb-8">
