@@ -24,6 +24,12 @@ export default function Home() {
             Enter Agent
           </Link>
 
+          <Link
+            href="/docs"
+            className="inline-flex items-center justify-center min-w-[160px] rounded-md border px-6 py-3 text-black"
+          >
+            Documentation
+          </Link>
         </div>
       </div>
     </main>
