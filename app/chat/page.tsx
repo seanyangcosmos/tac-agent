@@ -43,22 +43,24 @@ export default function ChatPage() {
         layer2.trim() ? `Risks: ${layer2.trim()}` : "",
       ].join("\n")
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          decisions: [
-            {
-              query,
-              support,
-              risks,
-              constraints
-            }
-          ]
-        })
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email,
+        decisions: [
+          {
+            query,
+            support,
+            risks,
+            constraints
+          }
+        ]
+      })
+    })
+
       const data = await response.json()
 
       if (data.upgrade) {
