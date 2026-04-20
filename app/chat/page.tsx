@@ -44,7 +44,9 @@ export default function ChatPage() {
       ].join("\n")
 
     const email = localStorage.getItem("email") || ""
-
+    const support = ""
+    const risks = ""
+    const constraints = ""
     const response = await fetch("/api/analyze", {
       method: "POST",
       headers: {
