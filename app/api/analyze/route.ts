@@ -78,25 +78,27 @@ Decisions:
 ${JSON.stringify(decisions, null, 2)}
 `
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content: "You are a structured decision evaluation engine."
-        },
-        {
-          role: "user",
-          content: tacPrompt
-        }
-      ]
-    })
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content: "Return valid JSON only. No markdown. No explanation."
+          },
+          {
+            role: "user",
+            content: tacPrompt
+          }
+        ],
+        response_format: { type: "json_object" }
+      })
 
-    const text = completion.choices[0].message.content || "{}"
+      console.log(completion.choices[0].message.content)
 
-    const result = JSON.parse(text)
-
+      const result = JSON.parse(
+        completion.choices[0].message.content || "{}"
+      )
     return NextResponse.json(result)
 
   } catch (err) {
