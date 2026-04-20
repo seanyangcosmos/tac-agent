@@ -113,11 +113,11 @@ export async function POST(req: Request) {
     const body = await req.json()
 
     const email = String(body?.email || "").trim().toLowerCase()
-    const decision = String(body?.decision || "").trim()
     const background = String(body?.background || "").trim()
-    const risks = String(body?.risks || "").trim()
-    const constraints = String(body?.constraints || "").trim()
-
+    const decision = String(body?.query || "").trim()
+    const background = String(body?.layer1 || "").trim()
+    const risk = String(body?.layer2 || "").trim()
+    const constraint = String(body?.context || "").trim()
     if (!decision) {
       return NextResponse.json(
         { error: "decision required" },

@@ -20,9 +20,6 @@ export default function ChatPage() {
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
-  const [support, setSupport] = useState("")
-  const [risks, setRisks] = useState("")
-  const [constraints, setConstraints] = useState("")
   const [layer1, setLayer1] = useState("")
   const [layer2, setLayer2] = useState("")
   const [context, setContext] = useState("")
@@ -51,10 +48,10 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           email,
-          decision: query,
-          background: support,
-          risks,
-          constraints,
+          query,
+          context,
+          layer1,
+          layer2,
         }),
       })
 
@@ -80,9 +77,9 @@ export default function ChatPage() {
 
   const resetForm = () => {
     setQuery("")
-    setSupport("")
-    setRisks("")
-    setConstraints("")
+    setContext("")
+    setlayer1("")
+    setlayer2("")
     setResult(null)
   }
 
