@@ -10,46 +10,86 @@ function deriveRecommendation(
   tension: number,
   convergence: number
 ) {
+  if (alignment <= 2 && tension <= 2 && convergence <= 2) {
+    return "Do not proceed"
+  }
 
-  console.log("NEW RULE ENGINE ACTIVE")
-  // 強 misalignment
   if (alignment <= 4 && convergence <= 4) {
     return "Do not proceed"
   }
 
-  // 高 tension
-  if (tension >= 7) {
+  if (alignment >= 7 && convergence >= 7 && tension >= 7) {
     return "Needs clarity"
   }
 
-  // readiness 不足
-  if (convergence <= 5) {
+  if (alignment >= 7 && tension >= 7) {
+    return "Needs clarity"
+  }
+
+  if (alignment >= 7 && convergence <= 5) {
     return "Wait"
   }
 
-  // 穩定可執行
-  if (alignment >= 7 && convergence >= 7 && tension <= 6) {
+  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
     return "Proceed"
+  }
+
+  if (convergence <= 5) {
+    return "Wait"
   }
 
   return "Needs clarity"
 }
 
-function deriveTopology(alignment: number, tension: number, convergence: number) {
-  if (alignment >= 7 && convergence >= 7 && tension <= 6) {
+
+function deriveTopology(
+  alignment: number,
+  tension: number,
+  convergence: number
+) {
+  // 幾乎無法判定，資訊不足
+  if (alignment <= 2 && tension <= 2 && convergence <= 2) {
+    return "premature_commitment"
+  }
+
+  // 目標本身就不對位
+  if (alignment <= 4 && convergence <= 4) {
+    return "structural_misalignment"
+  }
+
+  // 看起來可做，但其實衝突很高
+  if (alignment >= 7 && convergence >= 7 && tension >= 7) {
+    return "false_convergence"
+  }
+
+  // 目標合理，但內部有明顯衝突
+  if (alignment >= 7 && tension >= 7) {
+    return "latent_conflict"
+  }
+
+  // 目標合理，但執行穩定度不足
+  if (alignment >= 7 && convergence <= 5) {
+    return "execution_fragility"
+  }
+
+  // 看起來方向對，但其實只是表面一致
+  if (alignment >= 7 && tension >= 5 && convergence >= 5) {
+    return "surface_alignment_only"
+  }
+
+  // 穩定可執行
+  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
     return "stable_alignment"
   }
 
-  if (alignment >= 7 && tension >= 7) {
-    return "hidden_conflict"
+  // 可前進，但要小步走
+  if (alignment >= 5 && convergence >= 5 && tension >= 5) {
+    return "convergence_under_tension"
   }
 
+  // 還不適合行動
   if (convergence <= 5) {
     return "low_readiness"
-  }
-
-  if (alignment <= 4) {
-    return "misaligned_goal"
   }
 
   return "uncertain_structure"
