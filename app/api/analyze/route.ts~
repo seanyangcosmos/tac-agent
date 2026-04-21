@@ -26,6 +26,7 @@ function clampScore(value: unknown): number {
   return Math.max(0, Math.min(10, n))
 }
 
+
 function deriveRecommendation(
   alignment: number,
   tension: number,
@@ -36,24 +37,34 @@ function deriveRecommendation(
     return "One key condition missing"
   }
 
-  if (alignment <= 4 && convergence <= 4) {
-    return "Do not proceed"
-  }
-
-  if (tension >= 7) {
-    return "Needs clarity"
-  }
-
-  if (convergence <= 5) {
-    return "Wait"
-  }
-
-  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
+  if (alignment >= 7 && tension <= 4 && convergence >= 8) {
     return "Proceed"
   }
 
-  return "Needs clarity"
+  if (alignment >= 7 && tension <= 4 && convergence >= 5) {
+    return "Proceed with caution"
+  }
+
+  if (alignment >= 7 && tension >= 7) {
+    return "Needs clarification"
+  }
+
+  if (convergence <= 4) {
+    return "Wait"
+  }
+
+  if (alignment <= 4) {
+    return "Do not proceed"
+  }
+
+  return "Needs clarification"
 }
+
+
+
+git add app/api/analyze/route.ts
+git commit -m "refine TAC recommendation thresholds"
+git push
 
 function deriveTopology(
   alignment: number,
@@ -65,39 +76,19 @@ function deriveTopology(
     return "missing_key_condition"
   }
 
-  if (alignment <= 2 && tension <= 2 && convergence <= 2) {
-    return "premature_commitment"
-  }
-
-  if (alignment <= 4 && convergence <= 4) {
-    return "structural_misalignment"
-  }
-
-  if (alignment >= 7 && convergence >= 7 && tension >= 7) {
-    return "false_convergence"
+  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
+    return "stable_alignment"
   }
 
   if (alignment >= 7 && tension >= 7) {
     return "latent_conflict"
   }
 
-  if (alignment >= 7 && convergence <= 5) {
-    return "execution_fragility"
+  if (alignment <= 4 && convergence <= 4) {
+    return "structural_misalignment"
   }
 
-  if (alignment >= 7 && tension >= 5 && convergence >= 5) {
-    return "surface_alignment_only"
-  }
-
-  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
-    return "stable_alignment"
-  }
-
-  if (alignment >= 5 && convergence >= 5 && tension >= 5) {
-    return "convergence_under_tension"
-  }
-
-  if (convergence <= 5) {
+  if (convergence <= 4) {
     return "low_readiness"
   }
 

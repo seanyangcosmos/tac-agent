@@ -13,7 +13,7 @@ export default function Home() {
         </p>
 
         <p className="mt-8 text-lg md:text-xl text-gray-500 leading-relaxed">
-          An AI decision agent based on Goal fit(Alignment),Risks(Tension), and Read now?(Convergence).
+          Before you decide,TAC shows what you're missing.
         </p>
 
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
