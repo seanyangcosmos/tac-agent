@@ -37,7 +37,7 @@ function deriveRecommendation(
     return "One key condition missing"
   }
 
-  if (alignment >= 7 && tension <= 4 && convergence >= 7) {
+  if (alignment >= 7 && tension <= 4 && convergence >= 8) {
     return "Proceed"
   }
 
@@ -59,7 +59,6 @@ function deriveRecommendation(
 
   return "Needs clarification"
 }
-
 
 function deriveTopology(
   alignment: number,
