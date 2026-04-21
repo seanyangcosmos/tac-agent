@@ -71,39 +71,19 @@ function deriveTopology(
     return "missing_key_condition"
   }
 
-  if (alignment <= 2 && tension <= 2 && convergence <= 2) {
-    return "premature_commitment"
-  }
-
-  if (alignment <= 4 && convergence <= 4) {
-    return "structural_misalignment"
-  }
-
-  if (alignment >= 7 && convergence >= 7 && tension >= 7) {
-    return "false_convergence"
+  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
+    return "stable_alignment"
   }
 
   if (alignment >= 7 && tension >= 7) {
     return "latent_conflict"
   }
 
-  if (alignment >= 7 && convergence <= 5) {
-    return "execution_fragility"
+  if (alignment <= 4 && convergence <= 4) {
+    return "structural_misalignment"
   }
 
-  if (alignment >= 7 && tension >= 5 && convergence >= 5) {
-    return "surface_alignment_only"
-  }
-
-  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
-    return "stable_alignment"
-  }
-
-  if (alignment >= 5 && convergence >= 5 && tension >= 5) {
-    return "convergence_under_tension"
-  }
-
-  if (convergence <= 5) {
+  if (convergence <= 4) {
     return "low_readiness"
   }
 
