@@ -113,11 +113,19 @@ export async function POST(req: Request) {
     const body = await req.json()
 
     const email = String(body?.email || "").trim().toLowerCase()
-    const background = String(body?.background || "").trim()
     const decision = String(body?.query || "").trim()
     const background = String(body?.layer1 || "").trim()
     const risk = String(body?.layer2 || "").trim()
     const constraint = String(body?.context || "").trim()
+    console.log({
+      decision,
+      background,
+      risk,
+      constraint,
+    })
+
+
+
     if (!decision) {
       return NextResponse.json(
         { error: "decision required" },
@@ -167,10 +175,10 @@ Background:
 ${background || "None"}
 
 Risks:
-${risks || "None"}
+${risk || "None"}
 
 Constraints:
-${constraints || "None"}
+${constraint || "None"}
 `.trim()
 
     const completion = await openai.chat.completions.create({

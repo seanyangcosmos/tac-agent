@@ -26,34 +26,27 @@ function clampScore(value: unknown): number {
   return Math.max(0, Math.min(10, n))
 }
 
-function deriveRecommendation(
-  alignment: number,
-  tension: number,
-  convergence: number,
-  hasEnoughContext: boolean
-) {
-  if (!hasEnoughContext) {
-    return "One key condition missing"
-  }
-
-  if (alignment <= 4 && convergence <= 4) {
-    return "Do not proceed"
-  }
-
-  if (tension >= 7) {
-    return "Needs clarity"
-  }
-
-  if (convergence <= 5) {
-    return "Wait"
-  }
-
-  if (alignment >= 7 && convergence >= 7 && tension <= 4) {
-    return "Proceed"
-  }
-
-  return "Needs clarity"
+if (alignment >= 7 && tension <= 4 && convergence >= 7) {
+  return "Proceed"
 }
+
+if (alignment >= 7 && tension <= 4 && convergence >= 5) {
+  return "Proceed with caution"
+}
+
+if (alignment >= 7 && tension >= 7) {
+  return "Needs clarification"
+}
+
+if (convergence <= 4) {
+  return "Wait"
+}
+
+if (alignment <= 4) {
+  return "Do not proceed"
+}
+
+return "Needs clarification"
 
 function deriveTopology(
   alignment: number,
