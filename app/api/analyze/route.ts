@@ -30,8 +30,13 @@ function clampScore(value: unknown): number {
 function deriveRecommendation(
   alignment: number,
   tension: number,
-  convergence: number
+  convergence: number,
+  hasEnoughContext: boolean
 ) {
+  if (!hasEnoughContext) {
+    return "One key condition missing"
+  }
+
   if (alignment >= 7 && tension <= 4 && convergence >= 7) {
     return "Proceed"
   }
@@ -54,6 +59,7 @@ function deriveRecommendation(
 
   return "Needs clarification"
 }
+
 
 function deriveTopology(
   alignment: number,
