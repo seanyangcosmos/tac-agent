@@ -78,8 +78,8 @@ export default function ChatPage() {
   const resetForm = () => {
     setQuery("")
     setContext("")
-    setlayer1("")
-    setlayer2("")
+    setLayer1("")
+    setLayer2("")
     setResult(null)
   }
 
