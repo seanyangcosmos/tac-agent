@@ -145,7 +145,7 @@ function normalizeValidation(raw: any): ValidationResult {
 
 async function parseLatestInputIntoLayers(
   latestInput: string,
-  currentState: DecisionState
+  const currentState: DecisionState
 ): Promise<ParsedLayers> {
   const prompt = `
 You are a TAC decision-structure parser.
@@ -506,10 +506,6 @@ export async function POST(req: Request) {
       )
     }
     
-    const currentState: DecisionState = {
-      ...emptyDecisionState(),
-      ...(body?.decision_state || {}),
-    }
     const inferred = await inferTacStructure(input)
 
     const segments = inferred.segments
@@ -536,13 +532,6 @@ export async function POST(req: Request) {
       ...emptyDecisionState(),
       ...(body?.decision_state || {}),
     }
-
-    const parsedLayers = await parseLatestInputIntoLayers(
-      input,
-      currentState
-    )
-
-    const decision_state = mergeDecisionState(currentState, parsedLayers)
 
     const validation = await validateTacLayers(decision_state)
     const readiness_score = calculateReadinessScore(validation)
