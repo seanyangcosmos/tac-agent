@@ -474,11 +474,6 @@ export async function POST(req: Request) {
       )
     }
 
-    const currentState: DecisionState = {
-      ...emptyDecisionState(),
-      ...(body?.decision_state || {}),
-    }
-
     const validation = await validateTacLayers(decision_state)
     const readiness_score = calculateReadinessScore(validation)
     const missing_layer = detectMissingOrInvalidLayer(decision_state, validation)
