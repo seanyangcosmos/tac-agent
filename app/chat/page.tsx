@@ -63,6 +63,7 @@ export default function ChatPage() {
   const [activeQuestion, setActiveQuestion] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
+  const [showStructuredFields, setShowStructuredFields] = useState(false)
 
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
@@ -190,7 +191,9 @@ export default function ChatPage() {
     setRepairAnswer("")
     setActiveQuestion("")
     setActiveStep(0)
+    setShowStructuredFields(false)
   }
+
 
   function scoreLabel(value: number) {
     if (value >= 8) return "Strong"
@@ -211,7 +214,18 @@ export default function ChatPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setShowStructuredFields((v) => !v)}
+          className="text-sm underline text-gray-600"
+        >
+          {showStructuredFields ? "Hide structured fields" : "Show structured fields"}
+        </button>
+      </div>
 
+      {showStructuredFields && (
+        <div className="space-y-4 mb-6">
       <textarea
         placeholder="Add background details that support this decision (optional)"
         className="w-full border rounded-lg p-4 mb-4 min-h-[100px]"
@@ -232,7 +246,8 @@ export default function ChatPage() {
         value={context}
         onChange={(e) => setContext(e.target.value)}
       />
-
+     </div>
+     )}
       <div className="flex gap-3 mb-6 flex-wrap">
         <button
           onClick={runAnalysis}
