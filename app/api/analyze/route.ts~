@@ -30,6 +30,68 @@ type ValidationResult = {
   execution_horizon: LayerValidation
 }
 
+async function inferTacStructure(input: string) {
+  const prompt = `
+You are a TAC decision-structure inference engine.
+
+Your job is to:
+1. split the user's input into meaningful decision segments
+2. map those segments into TAC layers
+
+TAC layers:
+- intent = the actual decision being made
+- resources = usable resources, budget, time, constraints, practical limits
+- risk_boundary = acceptable downside, conflict boundary, tradeoff limit, what must not be harmed
+- execution_horizon = timing, deadline, duration, execution window
+
+Return valid JSON only in this exact format:
+
+{
+  "segments": string[],
+  "intent": string,
+  "resources": string,
+  "risk_boundary": string,
+  "execution_horizon": string
+}
+
+Rules:
+- Keep original meaning faithful
+- Do not invent missing content
+- If a layer is missing, return ""
+- One input may contain multiple segments
+- Segments should be concise and meaningful
+- No markdown
+- No explanation outside JSON
+
+User input:
+${input}
+`.trim()
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.1,
+    messages: [
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
+    ],
+    response_format: { type: "json_object" },
+  })
+
+  const raw = completion.choices[0].message.content || "{}"
+  const parsed = JSON.parse(raw)
+
+  return {
+    segments: Array.isArray(parsed.segments) ? parsed.segments.map((x: any) => String(x).trim()).filter(Boolean) : [],
+    parsedLayers: {
+      intent: safeText(parsed.intent),
+      resources: safeText(parsed.resources),
+      risk_boundary: safeText(parsed.risk_boundary),
+      execution_horizon: safeText(parsed.execution_horizon),
+    },
+  }
+}
+
+
 function emptyDecisionState(): DecisionState {
   return {
     intent: "",
@@ -78,65 +140,6 @@ function normalizeValidation(raw: any): ValidationResult {
       valid: Boolean(raw?.execution_horizon?.valid),
       reason: safeText(raw?.execution_horizon?.reason),
     },
-  }
-}
-
-async function parseLatestInputIntoLayers(
-  latestInput: string,
-  currentState: DecisionState
-): Promise<ParsedLayers> {
-  const prompt = `
-You are a TAC decision-structure parser.
-
-Map ONLY the user's latest input into one or more of these four layers:
-
-1. intent = the actual decision being made
-2. resources = usable resources, budget, constraints, capacity, practical conditions
-3. risk_boundary = acceptable downside, conflict boundary, tradeoff limit, non-negotiable impact
-4. execution_horizon = meaningful timing, duration, deadline, execution window
-
-Return valid JSON only in this exact format:
-
-{
-  "intent": string,
-  "resources": string,
-  "risk_boundary": string,
-  "execution_horizon": string
-}
-
-Rules:
-- Extract only what is clearly present in the latest input.
-- If a layer is not present, return "" for that layer.
-- Do not explain.
-- Do not use markdown.
-- Be faithful to the user's wording.
-- A single input may contribute to more than one layer if semantically justified.
-
-Current decision state:
-${JSON.stringify(currentState, null, 2)}
-
-Latest user input:
-${latestInput}
-`.trim()
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
-    temperature: 0.1,
-    messages: [
-      { role: "system", content: "Return valid JSON only." },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" },
-  })
-
-  const raw = completion.choices[0].message.content || "{}"
-  const parsed = JSON.parse(raw)
-
-  return {
-    intent: safeText(parsed.intent),
-    resources: safeText(parsed.resources),
-    risk_boundary: safeText(parsed.risk_boundary),
-    execution_horizon: safeText(parsed.execution_horizon),
   }
 }
 
@@ -430,6 +433,76 @@ function deriveTopology(
   return "uncertain_structure"
 }
 
+async function detectStructuralConflict(
+  state: DecisionState
+): Promise<StructuralConflictResult> {
+  const prompt = `
+You are a TAC structural conflict detector and repair-target generator.
+
+Your job:
+1. detect whether the TAC structure contains a meaningful conflict
+2. identify the most important conflict edge
+3. generate the best clarification target to reduce tension or improve convergence
+
+TAC layers:
+- intent
+- resources
+- risk_boundary
+- execution_horizon
+
+Return valid JSON only in this exact format:
+
+{
+  "has_conflict": boolean,
+  "conflict_type": string,
+  "explanation": string,
+  "repair_target": {
+    "target_edge": string,
+    "verification_type": string,
+    "question_logic": string,
+    "suggested_question": string
+  }
+}
+
+Rules:
+- If no conflict exists, return has_conflict=false and repair_target=null
+- Do not ask generic follow-up questions
+- The suggested question must specifically verify the most important unresolved conflict edge
+- Prefer questions that reduce structural tension or improve execution convergence
+- Return JSON only
+
+Decision state:
+${JSON.stringify(state, null, 2)}
+`.trim()
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.1,
+    messages: [
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
+    ],
+    response_format: { type: "json_object" },
+  })
+
+  const raw = completion.choices[0].message.content || "{}"
+  const parsed = JSON.parse(raw)
+
+  return {
+    has_conflict: Boolean(parsed.has_conflict),
+    conflict_type: safeText(parsed.conflict_type),
+    explanation: safeText(parsed.explanation),
+    repair_target: parsed.repair_target
+      ? {
+          target_edge: safeText(parsed.repair_target.target_edge),
+          verification_type: safeText(parsed.repair_target.verification_type),
+          question_logic: safeText(parsed.repair_target.question_logic),
+          suggested_question: safeText(parsed.repair_target.suggested_question),
+        }
+      : null,
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -443,6 +516,19 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    const currentState: DecisionState = {
+      ...emptyDecisionState(),
+      ...(body?.decision_state || {}),
+    }
+    
+    const inferred = await inferTacStructure(input)
+
+    const segments = inferred.segments
+    const parsedLayers = inferred.parsedLayers
+
+    const decision_state = mergeDecisionState(currentState, parsedLayers)
+
 
     const cookieStore = await cookies()
     const runsCookie = cookieStore.get("tac_runs")
@@ -458,18 +544,6 @@ export async function POST(req: Request) {
       )
     }
 
-    const currentState: DecisionState = {
-      ...emptyDecisionState(),
-      ...(body?.decision_state || {}),
-    }
-
-    const parsedLayers = await parseLatestInputIntoLayers(
-      input,
-      currentState
-    )
-
-    const decision_state = mergeDecisionState(currentState, parsedLayers)
-
     const validation = await validateTacLayers(decision_state)
     const readiness_score = calculateReadinessScore(validation)
     const missing_layer = detectMissingOrInvalidLayer(decision_state, validation)
@@ -482,6 +556,7 @@ export async function POST(req: Request) {
 
     if (missing_layer) {
       const response = NextResponse.json({
+        segments,
         decision_state,
         validation,
         readiness_score,
@@ -530,6 +605,7 @@ export async function POST(req: Request) {
     )
 
     const response = NextResponse.json({
+      segments,
       decision_state,
       validation,
       readiness_score,

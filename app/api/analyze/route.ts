@@ -30,6 +30,139 @@ type ValidationResult = {
   execution_horizon: LayerValidation
 }
 
+type RepairTarget = {
+  target_edge: string
+  verification_type: string
+  question_logic: string
+  suggested_question: string
+}
+
+type StructuralConflictResult = {
+  has_conflict: boolean
+  conflict_type: string
+  explanation: string
+  repair_target?: RepairTarget | null
+}
+
+function safeText(value: unknown): string {
+  return String(value || "").trim()
+}
+
+function emptyDecisionState(): DecisionState {
+  return {
+    intent: "",
+    resources: "",
+    risk_boundary: "",
+    execution_horizon: "",
+  }
+}
+
+function mergeDecisionState(
+  current: DecisionState,
+  parsed: ParsedLayers
+): DecisionState {
+  return {
+    intent: parsed.intent?.trim() || current.intent,
+    resources: parsed.resources?.trim() || current.resources,
+    risk_boundary: parsed.risk_boundary?.trim() || current.risk_boundary,
+    execution_horizon:
+      parsed.execution_horizon?.trim() || current.execution_horizon,
+  }
+}
+
+function normalizeValidation(raw: any): ValidationResult {
+  return {
+    intent: {
+      valid: Boolean(raw?.intent?.valid),
+      reason: safeText(raw?.intent?.reason),
+    },
+    resources: {
+      valid: Boolean(raw?.resources?.valid),
+      reason: safeText(raw?.resources?.reason),
+    },
+    risk_boundary: {
+      valid: Boolean(raw?.risk_boundary?.valid),
+      reason: safeText(raw?.risk_boundary?.reason),
+    },
+    execution_horizon: {
+      valid: Boolean(raw?.execution_horizon?.valid),
+      reason: safeText(raw?.execution_horizon?.reason),
+    },
+  }
+}
+
+function calculateReadinessScore(validation: ValidationResult): number {
+  const validCount = [
+    validation.intent.valid,
+    validation.resources.valid,
+    validation.risk_boundary.valid,
+    validation.execution_horizon.valid,
+  ].filter(Boolean).length
+
+  return Math.round((validCount / 4) * 100)
+}
+
+function detectMissingOrInvalidLayer(
+  state: DecisionState,
+  validation: ValidationResult
+): keyof DecisionState | null {
+  if (!state.intent.trim() || !validation.intent.valid) return "intent"
+  if (!state.resources.trim() || !validation.resources.valid) return "resources"
+  if (!state.risk_boundary.trim() || !validation.risk_boundary.valid) {
+    return "risk_boundary"
+  }
+  if (
+    !state.execution_horizon.trim() ||
+    !validation.execution_horizon.valid
+  ) {
+    return "execution_horizon"
+  }
+  return null
+}
+
+function nextQuestionForLayer(layer: keyof DecisionState | null): string {
+  if (!layer) return ""
+
+  const questions: Record<keyof DecisionState, string> = {
+    intent: "What decision are you actually trying to make?",
+    resources:
+      "What resources, budget, capacity, or practical limits shape this decision?",
+    risk_boundary:
+      "What downside, conflict, or unacceptable impact must this decision avoid?",
+    execution_horizon:
+      "What timing, deadline, or execution window makes this decision meaningful?",
+  }
+
+  return questions[layer]
+}
+
+function reasonForLayer(
+  layer: keyof DecisionState | null,
+  state: DecisionState,
+  validation: ValidationResult
+): string {
+  if (!layer) return ""
+
+  if (!state[layer].trim()) {
+    return "This TAC layer is still missing."
+  }
+
+  return validation[layer].reason || "This TAC layer is present but not yet valid."
+}
+
+function clamp10(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value)
+  if (Number.isNaN(n)) return 0
+  return Math.max(0, Math.min(10, n))
+}
+
+function scoreLabel10(value: number): string {
+  if (value >= 8) return "Strong"
+  if (value >= 5) return "Moderate"
+  if (value >= 3) return "Limited"
+  return "Low"
+}
+
 async function inferTacStructure(input: string) {
   const prompt = `
 You are a TAC decision-structure inference engine.
@@ -81,65 +214,15 @@ ${input}
   const parsed = JSON.parse(raw)
 
   return {
-    segments: Array.isArray(parsed.segments) ? parsed.segments.map((x: any) => String(x).trim()).filter(Boolean) : [],
+    segments: Array.isArray(parsed.segments)
+      ? parsed.segments.map((x: any) => String(x).trim()).filter(Boolean)
+      : [],
     parsedLayers: {
       intent: safeText(parsed.intent),
       resources: safeText(parsed.resources),
       risk_boundary: safeText(parsed.risk_boundary),
       execution_horizon: safeText(parsed.execution_horizon),
-    },
-  }
-}
-
-
-function emptyDecisionState(): DecisionState {
-  return {
-    intent: "",
-    resources: "",
-    risk_boundary: "",
-    execution_horizon: "",
-  }
-}
-
-function mergeDecisionState(
-  current: DecisionState,
-  parsed: ParsedLayers
-): DecisionState {
-  return {
-    intent: parsed.intent?.trim() || current.intent,
-    resources: parsed.resources?.trim() || current.resources,
-    risk_boundary: parsed.risk_boundary?.trim() || current.risk_boundary,
-    execution_horizon:
-      parsed.execution_horizon?.trim() || current.execution_horizon,
-  }
-}
-
-function safeText(value: unknown): string {
-  return String(value || "").trim()
-}
-
-function makeInvalid(reason: string): LayerValidation {
-  return { valid: false, reason }
-}
-
-function normalizeValidation(raw: any): ValidationResult {
-  return {
-    intent: {
-      valid: Boolean(raw?.intent?.valid),
-      reason: safeText(raw?.intent?.reason),
-    },
-    resources: {
-      valid: Boolean(raw?.resources?.valid),
-      reason: safeText(raw?.resources?.reason),
-    },
-    risk_boundary: {
-      valid: Boolean(raw?.risk_boundary?.valid),
-      reason: safeText(raw?.risk_boundary?.reason),
-    },
-    execution_horizon: {
-      valid: Boolean(raw?.execution_horizon?.valid),
-      reason: safeText(raw?.execution_horizon?.reason),
-    },
+    } satisfies ParsedLayers,
   }
 }
 
@@ -202,89 +285,43 @@ ${JSON.stringify(decisionState, null, 2)}
   return normalizeValidation(JSON.parse(raw))
 }
 
-function calculateReadinessScore(validation: ValidationResult): number {
-  const validCount = [
-    validation.intent.valid,
-    validation.resources.valid,
-    validation.risk_boundary.valid,
-    validation.execution_horizon.valid,
-  ].filter(Boolean).length
-
-  return Math.round((validCount / 4) * 100)
-}
-
-function detectMissingOrInvalidLayer(
-  state: DecisionState,
-  validation: ValidationResult
-): keyof DecisionState | null {
-  if (!state.intent.trim() || !validation.intent.valid) return "intent"
-  if (!state.resources.trim() || !validation.resources.valid) return "resources"
-  if (!state.risk_boundary.trim() || !validation.risk_boundary.valid) return "risk_boundary"
-  if (!state.execution_horizon.trim() || !validation.execution_horizon.valid) return "execution_horizon"
-  return null
-}
-
-function nextQuestionForLayer(layer: keyof DecisionState | null): string {
-  if (!layer) return ""
-
-  const questions: Record<keyof DecisionState, string> = {
-    intent: "What decision are you actually trying to make?",
-    resources: "What resources, budget, capacity, or practical limits shape this decision?",
-    risk_boundary: "What downside, conflict, or unacceptable impact must this decision avoid?",
-    execution_horizon: "What timing, deadline, or execution window makes this decision meaningful?",
-  }
-
-  return questions[layer]
-}
-
-function reasonForLayer(
-  layer: keyof DecisionState | null,
-  state: DecisionState,
-  validation: ValidationResult
-): string {
-  if (!layer) return ""
-
-  if (!state[layer].trim()) {
-    return "This TAC layer is still missing."
-  }
-
-  return validation[layer].reason || "This TAC layer is present but not yet valid."
-}
-
-function clamp10(value: unknown): number {
-  const n = typeof value === "number" ? value : Number(value)
-  if (Number.isNaN(n)) return 0
-  return Math.max(0, Math.min(10, n))
-}
-
-function scoreLabel10(value: number): string {
-  if (value >= 8) return "Strong"
-  if (value >= 5) return "Moderate"
-  if (value >= 3) return "Limited"
-  return "Low"
-}
-
-async function detectStructuralConflict(state: DecisionState): Promise<{
-  has_conflict: boolean
-  conflict_type: string
-  explanation: string
-}> {
+async function detectStructuralConflict(
+  state: DecisionState
+): Promise<StructuralConflictResult> {
   const prompt = `
-Check whether the following TAC decision layers contain a meaningful structural contradiction.
+You are a TAC structural conflict detector and repair-target generator.
 
-Return valid JSON only:
+Your job:
+1. detect whether the TAC structure contains a meaningful conflict
+2. identify the most important conflict edge
+3. generate the best clarification target to reduce tension or improve convergence
+
+TAC layers:
+- intent
+- resources
+- risk_boundary
+- execution_horizon
+
+Return valid JSON only in this exact format:
 
 {
   "has_conflict": boolean,
   "conflict_type": string,
-  "explanation": string
+  "explanation": string,
+  "repair_target": {
+    "target_edge": string,
+    "verification_type": string,
+    "question_logic": string,
+    "suggested_question": string
+  }
 }
 
 Rules:
-- Look for contradiction between intent, resources, risk_boundary, and execution_horizon.
-- Examples include feasibility mismatch, timing mismatch, unacceptable tradeoff, or internal conflict.
-- If there is no clear contradiction, return false and leave the other fields empty or minimal.
-- Return JSON only.
+- If no conflict exists, return has_conflict=false and repair_target=null
+- Do not ask generic follow-up questions
+- The suggested question must specifically verify the most important unresolved conflict edge
+- Prefer questions that reduce structural tension or improve execution convergence
+- Return JSON only
 
 Decision state:
 ${JSON.stringify(state, null, 2)}
@@ -307,6 +344,14 @@ ${JSON.stringify(state, null, 2)}
     has_conflict: Boolean(parsed.has_conflict),
     conflict_type: safeText(parsed.conflict_type),
     explanation: safeText(parsed.explanation),
+    repair_target: parsed.repair_target
+      ? {
+          target_edge: safeText(parsed.repair_target.target_edge),
+          verification_type: safeText(parsed.repair_target.verification_type),
+          question_logic: safeText(parsed.repair_target.question_logic),
+          suggested_question: safeText(parsed.repair_target.suggested_question),
+        }
+      : null,
   }
 }
 
@@ -451,14 +496,11 @@ export async function POST(req: Request) {
       ...emptyDecisionState(),
       ...(body?.decision_state || {}),
     }
-    
-    const inferred = await inferTacStructure(input)
 
+    const inferred = await inferTacStructure(input)
     const segments = inferred.segments
     const parsedLayers = inferred.parsedLayers
-
     const decision_state = mergeDecisionState(currentState, parsedLayers)
-
 
     const cookieStore = await cookies()
     const runsCookie = cookieStore.get("tac_runs")
@@ -478,7 +520,11 @@ export async function POST(req: Request) {
     const readiness_score = calculateReadinessScore(validation)
     const missing_layer = detectMissingOrInvalidLayer(decision_state, validation)
     const next_question = nextQuestionForLayer(missing_layer)
-    const missing_reason = reasonForLayer(missing_layer, decision_state, validation)
+    const missing_reason = reasonForLayer(
+      missing_layer,
+      decision_state,
+      validation
+    )
 
     if (!UNLIMITED_EMAILS.includes(email)) {
       runs += 1
@@ -505,6 +551,9 @@ export async function POST(req: Request) {
         structural_conflict: false,
         conflict_type: "",
         conflict_explanation: "",
+        repair_target: null,
+        repair_question: "",
+        clarification_mode: "layer_completion",
         status: "needs_one_more_condition",
       })
 
@@ -554,6 +603,12 @@ export async function POST(req: Request) {
       structural_conflict: structuralConflict.has_conflict,
       conflict_type: structuralConflict.conflict_type,
       conflict_explanation: structuralConflict.explanation,
+      repair_target: structuralConflict.repair_target || null,
+      repair_question:
+        structuralConflict.repair_target?.suggested_question || "",
+      clarification_mode: structuralConflict.has_conflict
+        ? "topology_repair"
+        : "",
       status: "decision_ready",
     })
 
