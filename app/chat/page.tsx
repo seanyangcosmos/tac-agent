@@ -4,47 +4,46 @@ import Link from "next/link"
 import { useState } from "react"
 
 type AnalyzeResult = {
+  segments?: string[]
   decision_state: {
     intent: string
     resources: string
     risk_boundary: string
     execution_horizon: string
   }
-
   validation: {
     intent: { valid: boolean; reason: string }
     resources: { valid: boolean; reason: string }
     risk_boundary: { valid: boolean; reason: string }
     execution_horizon: { valid: boolean; reason: string }
   }
-
   readiness_score: number
-
   missing_layer: string | null
   missing_reason: string
   next_question: string
-
   recommendation: string
   topology: string
   summary: string
-
   alignment: number
   alignment_label: string
-
   tension: number
   tension_label: string
-
   convergence: number
   convergence_label: string
-
   structural_conflict: boolean
   conflict_type: string
   conflict_explanation: string
-
-  segments?: string[]
-
+  repair_target?: {
+    target_edge: string
+    verification_type: string
+    question_logic: string
+    suggested_question: string
+  } | null
+  repair_question?: string
+  clarification_mode?: string
   status: string
 }
+
 export default function ChatPage() {
   const [query, setQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -54,6 +53,10 @@ export default function ChatPage() {
   const [context, setContext] = useState("")
   const [decisionState, setDecisionState] = useState({})
   const [result, setResult] = useState<AnalyzeResult | null>(null)
+  const [repairAnswer, setRepairAnswer] = useState("")
+  const [activeQuestion, setActiveQuestion] = useState("")
+
+
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
 
@@ -98,9 +101,18 @@ export default function ChatPage() {
       if (!response.ok) {
         throw new Error(data.error || "Analysis failed")
       }
-
       setResult(data)
       setDecisionState(data.decision_state || {})
+
+      if (data.missing_layer && data.next_question) {
+        setActiveQuestion(data.next_question)
+      } else if (data.structural_conflict && data.repair_question) {
+        setActiveQuestion(data.repair_question)
+      } else {
+        setActiveQuestion("")
+      }
+
+      setRepairAnswer("")
     } catch (error) {
       alert("Analysis unavailable. Please try again.")
     } finally {
@@ -110,13 +122,65 @@ export default function ChatPage() {
     }
   }
 
+  const submitRepairAnswer = async () => {
+    if (!repairAnswer.trim() || isLoading) return
+
+    setIsLoading(true)
+
+    try {
+      const email = localStorage.getItem("email") || "sean4128@gmail.com"
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          input: repairAnswer.trim(),
+          decision_state: decisionState,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.upgrade) {
+        window.open("https://sycds.com", "_blank")
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Analysis failed")
+      }
+
+      setResult(data)
+      setDecisionState(data.decision_state || {})
+
+      if (data.missing_layer && data.next_question) {
+        setActiveQuestion(data.next_question)
+      } else if (data.structural_conflict && data.repair_question) {
+        setActiveQuestion(data.repair_question)
+      } else {
+        setActiveQuestion("")
+      }
+
+      setRepairAnswer("")
+    } catch (error) {
+      alert("Analysis unavailable. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const resetForm = () => {
     setQuery("")
-    setContext("") 
+    setContext("")
     setLayer1("")
     setLayer2("")
     setResult(null)
     setDecisionState({})
+    setRepairAnswer("")
+    setActiveQuestion("")
   }
 
   function scoreLabel(value: number) {
@@ -324,9 +388,64 @@ export default function ChatPage() {
               )}
             </div>
           )}
+          {result?.structural_conflict && result?.repair_question ? (
+            <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+              <div className="font-semibold text-red-800">
+                Clarification required
+              </div>
 
+              {result.conflict_type && (
+                <div className="mt-2 text-sm text-red-700">
+                  Conflict type: {result.conflict_type}
+                </div>
+              )}
+
+              {result.conflict_explanation && (
+                <div className="mt-2 text-sm text-gray-700">
+                  {result.conflict_explanation}
+                </div>
+              )}
+
+              <div className="mt-3 text-sm font-medium text-red-900">
+                Next verification:
+              </div>
+
+              <div className="text-sm text-gray-900">
+                {result.repair_question}
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
+
+      {activeQuestion ? (
+        <div className="border rounded-lg p-4 bg-blue-50">
+          <div className="font-semibold mb-2">
+            Answer this to continue
+          </div>
+
+          <div className="text-sm text-gray-800 mb-3">
+            {activeQuestion}
+          </div>
+
+           <textarea
+            value={repairAnswer}
+            onChange={(e) => setRepairAnswer(e.target.value)}
+            placeholder="Type your answer here..."
+            className="w-full border rounded-md p-3 min-h-[100px]"
+          />
+
+          <div className="mt-3">
+            <button
+              onClick={submitRepairAnswer}
+              disabled={isLoading || !repairAnswer.trim()}
+              className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+            >
+              Continue Analysis
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
