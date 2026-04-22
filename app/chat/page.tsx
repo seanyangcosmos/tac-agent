@@ -47,18 +47,24 @@ export default function ChatPage() {
 
       const email = localStorage.getItem("email") || "sean4128@gmail.com"
 
+      const combinedInput = [
+        query.trim(),
+        context.trim(),
+        layer1.trim(),
+        layer2.trim(),
+      ].filter(Boolean).join("\n")
+
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
-        "Content-Type": "application/json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email,
-          input: query,
+          input: combinedInput,
           decision_state: decisionState,
-        })
+        }),
       })
-
       const data = await response.json()
 
       if (data.upgrade) {
@@ -82,10 +88,11 @@ export default function ChatPage() {
 
   const resetForm = () => {
     setQuery("")
-    setContext("")
+    setContext("") 
     setLayer1("")
     setLayer2("")
     setResult(null)
+    setDecisionState({})
   }
 
   function scoreLabel(value: number) {

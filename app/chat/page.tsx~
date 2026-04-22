@@ -166,72 +166,81 @@ export default function ChatPage() {
       )}
 
       {result && (
-        <div className="border rounded-xl p-6">
+            <div className="border rounded-xl p-6">
+                  {result.next_question ? (
+                        <>
+                              <h2 className="text-xl font-semibold mb-4">
+                                    One more thing needed
+                              </h2>
 
-          {result.recommendation && !result.next_question && (
-            <>
-              <h2 className="text-xl font-semibold mb-2">
-                Recommendation
-              </h2>
+                              {typeof result.readiness_score === "number" && (
+                                    <p className="text-sm text-gray-600 mb-4">
+                                          Decision readiness: {result.readiness_score}%
+                                    </p>
+                              )}
 
-              <p className="text-lg mb-4">
-                {result.recommendation}
-              </p>
-            </>
-          )}
+                              <div className="mt-2 rounded-lg border p-4">
+                                    <p className="mb-2">
+                                          Missing layer: {result.missing_layer}
+                                    </p>
 
-          {result.next_question && (
-            <div className="mt-4 rounded-lg border p-4">
-              <h3 className="font-semibold mb-2">
-                One more thing needed
-              </h3>
+                                    <p className="text-lg font-medium">
+                                          {result.next_question}
+                                    </p>
+                              </div>
+                        </>
+                  ) : (
+                        <>
+                              <h2 className="text-xl font-semibold mb-2">
+                                    Recommendation
+                              </h2>
 
-              <p className="mb-2">
-                Missing layer: {result.missing_layer}
-              </p>
+                              <p className="text-lg mb-4">
+                                    {result.recommendation}
+                              </p>
 
-              <p className="text-lg font-medium">
-                {result.next_question}
-              </p>
+                              {typeof result.readiness_score === "number" && (
+                                    <p className="text-sm text-gray-600 mb-4">
+                                          Decision readiness: {result.readiness_score}%
+                                    </p>
+                              )}
+
+                              <h3 className="font-semibold mt-6 mb-2">
+                                    Why this result
+                              </h3>
+
+                              <p className="text-gray-700 mb-6">
+                                    {result.summary || "No summary available."}
+                              </p>
+
+                              <h3 className="font-semibold mb-2">
+                                    What we checked
+                              </h3>
+
+                              <ul className="space-y-2 text-gray-700">
+                                    <li>
+                                          <strong>Goal fit (Alignment):</strong> Does this goal match your current situation?
+                                          <br />
+                                          Assessment: {result.alignment_label || "N/A"}
+                                    </li>
+
+                                    <li>
+                                          <strong>Risks (Tension):</strong> Are there conflicts or uncertainties that could slow progress?
+                                          <br />
+                                          Assessment: {result.tension_label || "N/A"}
+                                    </li>
+
+                                    <li>
+                                          <strong>Ready now? (Convergence):</strong> Is this stable enough to act on today?
+                                          <br />
+                                          Assessment: {result.convergence_label || "N/A"}
+                                    </li>
+                              </ul>
+                        </>
+                  )}
             </div>
-          )}
-          <h3 className="font-semibold mt-6 mb-2">
-            Why this result
-          </h3>
-
-          <p className="text-gray-700 mb-6">
-            {result.summary ||
-              "This decision makes sense, but a smaller first step may reduce risk."}
-          </p>
-
-          <h3 className="font-semibold mb-2">
-            What we checked
-          </h3>
-
-          <ul className="space-y-2 text-gray-700">
-
-            <li>
-              <strong>Goal fit(Alignment):</strong> Does this goal match your current situation?
-              <br />
-              Assessment: {scoreLabel(result.alignment)}
-            </li>
-
-            <li>
-              <strong>Risks(Tension):</strong> Are there conflicts or uncertainties that could slow progress?
-              <br />
-              Assessment: {scoreLabel(result.tension)}
-            </li>
-
-            <li>
-              <strong>Ready now?(Convergence)</strong> Is this stable enough to act on today?
-              <br />
-              Assessment: {scoreLabel(result.convergence)}
-            </li>
-
-          </ul>
-
-        </div>
       )}
+
 
     </div>
   )
