@@ -47,7 +47,6 @@ type AnalyzeResult = {
 }
 export default function ChatPage() {
   const [query, setQuery] = useState("")
-  const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
   const [layer1, setLayer1] = useState("")
