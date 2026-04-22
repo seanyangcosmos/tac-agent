@@ -143,65 +143,6 @@ function normalizeValidation(raw: any): ValidationResult {
   }
 }
 
-async function parseLatestInputIntoLayers(
-  latestInput: string,
-  const currentState: DecisionState
-): Promise<ParsedLayers> {
-  const prompt = `
-You are a TAC decision-structure parser.
-
-Map ONLY the user's latest input into one or more of these four layers:
-
-1. intent = the actual decision being made
-2. resources = usable resources, budget, constraints, capacity, practical conditions
-3. risk_boundary = acceptable downside, conflict boundary, tradeoff limit, non-negotiable impact
-4. execution_horizon = meaningful timing, duration, deadline, execution window
-
-Return valid JSON only in this exact format:
-
-{
-  "intent": string,
-  "resources": string,
-  "risk_boundary": string,
-  "execution_horizon": string
-}
-
-Rules:
-- Extract only what is clearly present in the latest input.
-- If a layer is not present, return "" for that layer.
-- Do not explain.
-- Do not use markdown.
-- Be faithful to the user's wording.
-- A single input may contribute to more than one layer if semantically justified.
-
-Current decision state:
-${JSON.stringify(currentState, null, 2)}
-
-Latest user input:
-${latestInput}
-`.trim()
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
-    temperature: 0.1,
-    messages: [
-      { role: "system", content: "Return valid JSON only." },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" },
-  })
-
-  const raw = completion.choices[0].message.content || "{}"
-  const parsed = JSON.parse(raw)
-
-  return {
-    intent: safeText(parsed.intent),
-    resources: safeText(parsed.resources),
-    risk_boundary: safeText(parsed.risk_boundary),
-    execution_horizon: safeText(parsed.execution_horizon),
-  }
-}
-
 async function validateTacLayers(
   decisionState: DecisionState
 ): Promise<ValidationResult> {
@@ -504,6 +445,11 @@ export async function POST(req: Request) {
         { error: "input required" },
         { status: 400 }
       )
+    }
+
+    const currentState: DecisionState = {
+      ...emptyDecisionState(),
+      ...(body?.decision_state || {}),
     }
     
     const inferred = await inferTacStructure(input)
