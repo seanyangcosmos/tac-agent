@@ -173,82 +173,122 @@ export default function ChatPage() {
       )}
 
       {result && (
-            <div className="border rounded-xl p-6">
-                  {result.next_question ? (
-                        <>
-                              <h2 className="text-xl font-semibold mb-4">
-                                    One more thing needed
-                              </h2>
+        <div className="mt-8 space-y-6">
 
-                              {typeof result.readiness_score === "number" && (
-                                    <p className="text-sm text-gray-600 mb-4">
-                                          Decision readiness: {result.readiness_score}%
-                                    </p>
-                              )}
+          {/* Readiness score */}
+          <div className="text-lg font-semibold">
+            Readiness Score: {result.readiness_score}%
+          </div>
 
-                              <div className="mt-2 rounded-lg border p-4">
-                                    <p className="mb-2">
-                                          Missing layer: {result.missing_layer}
-                                    </p>
+          {/* Missing layer block */}
+          {result.missing_layer && (
+            <div className="bg-yellow-50 border border-yellow-300 p-4 rounded-lg">
+              <div className="font-semibold text-yellow-800">
+                Missing or invalid layer: {result.missing_layer}
+              </div>
 
-                                    <p className="text-lg font-medium">
-                                          {result.next_question}
-                                    </p>
-                              </div>
-                        </>
-                  ) : (
-                        <>
-                              <h2 className="text-xl font-semibold mb-2">
-                                    Recommendation
-                              </h2>
+              {result.missing_reason && (
+                <div className="mt-2 text-sm text-yellow-700">
+                  Reason: {result.missing_reason}
+                </div>
+              )}
 
-                              <p className="text-lg mb-4">
-                                    {result.recommendation}
-                              </p>
-
-                              {typeof result.readiness_score === "number" && (
-                                    <p className="text-sm text-gray-600 mb-4">
-                                          Decision readiness: {result.readiness_score}%
-                                    </p>
-                              )}
-
-                              <h3 className="font-semibold mt-6 mb-2">
-                                    Why this result
-                              </h3>
-
-                              <p className="text-gray-700 mb-6">
-                                    {result.summary || "No summary available."}
-                              </p>
-
-                              <h3 className="font-semibold mb-2">
-                                    What we checked
-                              </h3>
-
-                              <ul className="space-y-2 text-gray-700">
-                                    <li>
-                                          <strong>Goal fit (Alignment):</strong> Does this goal match your current situation?
-                                          <br />
-                                          Assessment: {result.alignment_label || "N/A"}
-                                    </li>
-
-                                    <li>
-                                          <strong>Risks (Tension):</strong> Are there conflicts or uncertainties that could slow progress?
-                                          <br />
-                                          Assessment: {result.tension_label || "N/A"}
-                                    </li>
-
-                                    <li>
-                                          <strong>Ready now? (Convergence):</strong> Is this stable enough to act on today?
-                                          <br />
-                                          Assessment: {result.convergence_label || "N/A"}
-                                    </li>
-                              </ul>
-                        </>
-                  )}
+              {result.next_question && (
+                <div className="mt-2 text-sm text-yellow-900 font-medium">
+                  Next step: {result.next_question}
+                </div>
+              )}
             </div>
+          )}
+
+          {/* Layer validation panel */}
+          {result.validation && (
+            <div className="border rounded-lg p-4 bg-gray-50">
+              <div className="font-semibold mb-3">
+                TAC Layer Validation
+              </div>
+
+              {["intent", "resources", "risk_boundary", "execution_horizon"].map(
+                (layer) => {
+                  const layerData = result.validation[layer]
+
+                  return (
+                    <div
+                      key={layer}
+                      className="mb-2 flex justify-between items-start"
+                    >
+                      <div className="font-medium">{layer}</div>
+
+                      <div className="text-right max-w-md">
+                        <div
+                          className={
+                            layerData.valid
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {layerData.valid ? "valid" : "invalid"}
+                        </div>
+
+                        {!layerData.valid && layerData.reason && (
+                          <div className="text-xs text-gray-600">
+                            {layerData.reason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                }
+              )}
+            </div>
+          )}
+
+          {/* Final decision block */}
+          {result.status === "decision_ready" && (
+            <div className="border rounded-lg p-4 bg-green-50">
+
+              <div className="text-lg font-semibold">
+                Recommendation: {result.recommendation}
+              </div>
+
+              <div className="mt-2">
+                Topology: {result.topology}
+              </div>
+
+              <div className="mt-4">
+                Alignment: {result.alignment} ({result.alignment_label})
+              </div>
+
+              <div>
+                Tension: {result.tension} ({result.tension_label})
+              </div>
+
+              <div>
+                Convergence: {result.convergence} ({result.convergence_label})
+              </div>
+
+              {result.structural_conflict && (
+                <div className="mt-4 text-red-700">
+                  Structural conflict detected: {result.conflict_type}
+                </div>
+              )}
+
+              {result.conflict_explanation && (
+                <div className="text-sm text-gray-700">
+                  {result.conflict_explanation}
+                </div>
+              )}
+
+              {result.summary && (
+                <div className="mt-4 text-gray-800">
+                  {result.summary}
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
       )}
-
-
     </div>
   )
 }
