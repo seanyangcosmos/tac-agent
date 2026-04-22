@@ -323,19 +323,40 @@ export default function ChatPage() {
 
       {result && (
         <div className="mt-8 space-y-6">
-          <div className="text-lg font-semibold">
-            Readiness Score: {result.readiness_score}%
-          </div>
+          <div className="mt-8 space-y-6">
+            <div className="text-lg font-semibold mb-1">
+              Readiness Score
+            </div>
 
+            <div
+              className={`text-3xl font-bold ${
+                result.readiness_score >= 85
+                  ? "text-green-600"
+                  : result.readiness_score >= 60
+                  ? "text-yellow-600"
+                  : "text-red-600"
+              }`}
+            >
+              {result.readiness_score}%
+            </div>
+
+            <div className="text-sm text-gray-500">
+              {result.readiness_score >= 85
+                ? "Ready to move forward"
+                : result.readiness_score >= 60
+                ? "Almost ready — one or two elements to confirm"
+                : "Key structural elements still missing"}
+            </div>
+          </div>
           {result.missing_layer && (
             <div className="bg-yellow-50 border border-yellow-300 p-4 rounded-lg">
               <div className="font-semibold text-yellow-800">
-                Missing or invalid layer: {result.missing_layer}
+                Area to clarify: {result.missing_layer}
               </div>
 
               {result.missing_reason && (
                 <div className="mt-2 text-sm text-yellow-700">
-                  Reason: {result.missing_reason}
+                  Why this matters: {result.missing_reason}
                 </div>
               )}
 
