@@ -263,14 +263,38 @@ export default function ChatPage() {
         >
           Reset
         </button>
-
         <button
-          onClick={() => window.open("https://sycds.com", "_blank")}
+          onClick={async () => {
+            try {
+              const res = await fetch("/api/checkout", {
+                method: "POST",
+              })
+
+              const data = await res.json()
+
+              if (!res.ok) {
+                throw new Error(data.error || "Checkout failed")
+              }
+
+              if (data.url) {
+                window.location.href = data.url
+              }
+            } catch (error) {
+              alert("Unable to start checkout. Please try again.")
+            }
+          }}
           className="border px-6 py-3 rounded-lg"
         >
           Upgrade to Pro ($29/month)
         </button>
-      </div>
+        <button
+          onClick={() => window.open("https://sycds.com", "_blank")}
+          className="border px-6 py-3 rounded-lg"
+        >
+          explore sycds.com
+        </button>
+    
+  </div>
 
       <p className="text-gray-600 text-sm mb-8">
         TAC Agent helps you understand whether a decision makes sense, has hidden
