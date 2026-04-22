@@ -535,7 +535,7 @@ export async function POST(req: Request) {
     )
 
     const response = NextResponse.json({
-      segmants,
+      segments,
       decision_state,
       validation,
       readiness_score,
