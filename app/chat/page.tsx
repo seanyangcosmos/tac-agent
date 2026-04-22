@@ -54,7 +54,7 @@ export default function ChatPage() {
   const [layer2, setLayer2] = useState("")
   const [context, setContext] = useState("")
   const [decisionState, setDecisionState] = useState({})
-
+  const [result, setResult] = useState<AnalyzeResult | null>(null)
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
 
@@ -196,8 +196,7 @@ export default function ChatPage() {
           Evaluating decision structure...
         </p>
       )}
-
-      {result.segments && result.segments.length > 0 && (   
+      {result?.segments?.length ? (
         <div className="border rounded-lg p-4 bg-gray-50">
           <div className="font-semibold mb-3">
             Parsed decision structure
@@ -209,7 +208,9 @@ export default function ChatPage() {
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
+
+
       {result && (
         <div className="mt-8 space-y-6">
 
