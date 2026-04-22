@@ -4,15 +4,20 @@ import Link from "next/link"
 import { useState } from "react"
 
 type AnalyzeResult = {
-  alignment: number
-  tension: number
-  convergence: number
-  topology: string
-  recommendation: string
-  summary: string
-  has_enough_context: boolean
-  missing_condition: string
-  follow_up_question: string
+  recommendation?: string
+  alignment?: number
+  alignment_label?: string
+  tension?: number
+  tension_label?: string
+  convergence?: number
+  convergence_label?: string
+  topology?: string
+  summary?: string
+
+  readiness_score?: number
+  missing_layer?: string
+  next_question?: string
+  decision_state?: Record<string, any>
 }
 
 export default function ChatPage() {
