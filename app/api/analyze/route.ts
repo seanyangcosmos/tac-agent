@@ -30,13 +30,6 @@ type ValidationResult = {
   execution_horizon: LayerValidation
 }
 
-const inferred = await inferTacStructure(input)
-
-const segments = inferred.segments
-const parsedLayers = inferred.parsedLayers
-
-const decision_state = mergeDecisionState(currentState, parsedLayers)
-
 async function inferTacStructure(input: string) {
   const prompt = `
 You are a TAC decision-structure inference engine.
@@ -512,6 +505,18 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+    
+    const currentState: DecisionState = {
+      ...emptyDecisionState(),
+      ...(body?.decision_state || {}),
+    }
+    const inferred = await inferTacStructure(input)
+
+    const segments = inferred.segments
+    const parsedLayers = inferred.parsedLayers
+
+    const decision_state = mergeDecisionState(currentState, parsedLayers)
+
 
     const cookieStore = await cookies()
     const runsCookie = cookieStore.get("tac_runs")
