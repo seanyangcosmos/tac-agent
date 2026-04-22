@@ -16,9 +16,21 @@ type DecisionState = {
   execution_horizon: string
 }
 
-type ParsedInput = Partial<DecisionState>
+type ParsedLayers = Partial<DecisionState>
 
-function emptyState(): DecisionState {
+type LayerValidation = {
+  valid: boolean
+  reason: string
+}
+
+type ValidationResult = {
+  intent: LayerValidation
+  resources: LayerValidation
+  risk_boundary: LayerValidation
+  execution_horizon: LayerValidation
+}
+
+function emptyDecisionState(): DecisionState {
   return {
     intent: "",
     resources: "",
@@ -27,148 +39,61 @@ function emptyState(): DecisionState {
   }
 }
 
-function mergeState(current: DecisionState, parsed: ParsedInput): DecisionState {
+function mergeDecisionState(
+  current: DecisionState,
+  parsed: ParsedLayers
+): DecisionState {
   return {
-    intent: parsed.intent || current.intent,
-    resources: parsed.resources || current.resources,
-    risk_boundary: parsed.risk_boundary || current.risk_boundary,
-    execution_horizon: parsed.execution_horizon || current.execution_horizon,
+    intent: parsed.intent?.trim() || current.intent,
+    resources: parsed.resources?.trim() || current.resources,
+    risk_boundary: parsed.risk_boundary?.trim() || current.risk_boundary,
+    execution_horizon:
+      parsed.execution_horizon?.trim() || current.execution_horizon,
   }
 }
 
-function layerStatus(state: DecisionState) {
+function safeText(value: unknown): string {
+  return String(value || "").trim()
+}
+
+function makeInvalid(reason: string): LayerValidation {
+  return { valid: false, reason }
+}
+
+function normalizeValidation(raw: any): ValidationResult {
   return {
-    intent: Boolean(state.intent.trim()),
-    resources: Boolean(state.resources.trim()),
-    risk_boundary: Boolean(state.risk_boundary.trim()),
-    execution_horizon: Boolean(state.execution_horizon.trim()),
+    intent: {
+      valid: Boolean(raw?.intent?.valid),
+      reason: safeText(raw?.intent?.reason),
+    },
+    resources: {
+      valid: Boolean(raw?.resources?.valid),
+      reason: safeText(raw?.resources?.reason),
+    },
+    risk_boundary: {
+      valid: Boolean(raw?.risk_boundary?.valid),
+      reason: safeText(raw?.risk_boundary?.reason),
+    },
+    execution_horizon: {
+      valid: Boolean(raw?.execution_horizon?.valid),
+      reason: safeText(raw?.execution_horizon?.reason),
+    },
   }
 }
 
-function readinessScore(state: DecisionState) {
-  const layers = layerStatus(state)
-  const weights = {
-    intent: 35,
-    resources: 30,
-    risk_boundary: 20,
-    execution_horizon: 15,
-  }
-
-  let score = 0
-  if (layers.intent) score += weights.intent
-  if (layers.resources) score += weights.resources
-  if (layers.risk_boundary) score += weights.risk_boundary
-  if (layers.execution_horizon) score += weights.execution_horizon
-
-  return score
-}
-
-function nextMissingLayer(state: DecisionState): keyof DecisionState | null {
-  const layers = layerStatus(state)
-
-  if (!layers.intent) return "intent"
-  if (!layers.resources) return "resources"
-  if (!layers.risk_boundary) return "risk_boundary"
-  if (!layers.execution_horizon) return "execution_horizon"
-
-  return null
-}
-
-function nextQuestionForLayer(layer: keyof DecisionState | null) {
-  if (!layer) return ""
-
-  const questions: Record<keyof DecisionState, string> = {
-    intent: "What decision are you trying to make?",
-    resources: "What resources, budget, or constraints will shape this decision?",
-    risk_boundary: "What downside risk, loss, or tradeoff can you accept?",
-    execution_horizon: "What is your intended timing or time horizon for this decision?",
-  }
-
-  return questions[layer]
-}
-
-function clamp10(value: unknown): number {
-  const n = typeof value === "number" ? value : Number(value)
-  if (Number.isNaN(n)) return 0
-  return Math.max(0, Math.min(10, n))
-}
-
-function scoreLabel10(value: number) {
-  if (value >= 8) return "Strong"
-  if (value >= 5) return "Moderate"
-  if (value >= 3) return "Limited"
-  return "Low"
-}
-
-function deriveRecommendation(
-  alignment: number,
-  tension: number,
-  convergence: number
-) {
-  if (alignment >= 7 && tension <= 4 && convergence >= 8) {
-    return "Proceed"
-  }
-
-  if (alignment >= 7 && tension <= 4 && convergence >= 5) {
-    return "Proceed with caution"
-  }
-
-  if (alignment >= 7 && tension >= 7) {
-    return "Needs clarification"
-  }
-
-  if (convergence <= 4) {
-    return "Wait"
-  }
-
-  if (alignment <= 4) {
-    return "Do not proceed"
-  }
-
-  return "Needs clarification"
-}
-
-function deriveTopology(
-  alignment: number,
-  tension: number,
-  convergence: number
-) {
-  if (alignment >= 7 && tension <= 4 && convergence >= 8) {
-    return "stable_alignment"
-  }
-
-  if (alignment >= 7 && tension <= 4 && convergence >= 5) {
-    return "actionable_with_risk"
-  }
-
-  if (alignment >= 7 && tension >= 7) {
-    return "latent_conflict"
-  }
-
-  if (convergence <= 4) {
-    return "low_readiness"
-  }
-
-  if (alignment <= 4) {
-    return "structural_misalignment"
-  }
-
-  return "uncertain_structure"
-}
-
-async function parseIntoDecisionState(
-  userInput: string,
+async function parseLatestInputIntoLayers(
+  latestInput: string,
   currentState: DecisionState
-): Promise<ParsedInput> {
+): Promise<ParsedLayers> {
   const prompt = `
-You are a decision-structure parser.
+You are a TAC decision-structure parser.
 
-Map the user's latest input into one or more of these four layers:
+Map ONLY the user's latest input into one or more of these four layers:
 
-1. intent = what decision the user is trying to make
-2. resources = budget, resources, limits, constraints
-3. risk_boundary = acceptable downside, tradeoff, safety buffer, risk tolerance
-4. execution_horizon = timing, holding period, short-term vs long-term, when to act
+1. intent = the actual decision being made
+2. resources = usable resources, budget, constraints, capacity, practical conditions
+3. risk_boundary = acceptable downside, conflict boundary, tradeoff limit, non-negotiable impact
+4. execution_horizon = meaningful timing, duration, deadline, execution window
 
 Return valid JSON only in this exact format:
 
@@ -180,30 +105,26 @@ Return valid JSON only in this exact format:
 }
 
 Rules:
-- Only extract what is clearly present in the latest input.
-- If a layer is not present, return "" for that field.
-- Do not rewrite existing state.
-- Do not infer missing layers unless directly stated.
+- Extract only what is clearly present in the latest input.
+- If a layer is not present, return "" for that layer.
+- Do not explain.
+- Do not use markdown.
+- Be faithful to the user's wording.
+- A single input may contribute to more than one layer if semantically justified.
 
 Current decision state:
 ${JSON.stringify(currentState, null, 2)}
 
 Latest user input:
-${userInput}
+${latestInput}
 `.trim()
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.1,
     messages: [
-      {
-        role: "system",
-        content: "Return valid JSON only. No markdown. No explanation.",
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
     ],
     response_format: { type: "json_object" },
   })
@@ -212,21 +133,200 @@ ${userInput}
   const parsed = JSON.parse(raw)
 
   return {
-    intent: String(parsed.intent || "").trim(),
-    resources: String(parsed.resources || "").trim(),
-    risk_boundary: String(parsed.risk_boundary || "").trim(),
-    execution_horizon: String(parsed.execution_horizon || "").trim(),
+    intent: safeText(parsed.intent),
+    resources: safeText(parsed.resources),
+    risk_boundary: safeText(parsed.risk_boundary),
+    execution_horizon: safeText(parsed.execution_horizon),
   }
 }
 
-async function evaluateDecisionState(state: DecisionState) {
+async function validateTacLayers(
+  decisionState: DecisionState
+): Promise<ValidationResult> {
+  const prompt = `
+You are validating whether each layer in a TAC decision structure is semantically valid.
+
+TAC layers:
+1. intent = the actual decision being made
+2. resources = usable resources, constraints, or practical conditions that shape the decision
+3. risk_boundary = acceptable downside, conflict boundary, tradeoff limit, or what must not be harmed
+4. execution_horizon = meaningful timing, duration, or execution window for action
+
+Return valid JSON only in this exact format:
+
+{
+  "intent": {
+    "valid": boolean,
+    "reason": string
+  },
+  "resources": {
+    "valid": boolean,
+    "reason": string
+  },
+  "risk_boundary": {
+    "valid": boolean,
+    "reason": string
+  },
+  "execution_horizon": {
+    "valid": boolean,
+    "reason": string
+  }
+}
+
+Rules:
+- Judge semantic role, not just whether text exists.
+- A layer may be present but invalid.
+- Placeholder text, meaningless strings, random numbers, unrelated content, or vague filler should be invalid.
+- Do not invent information.
+- Keep reasons short and concrete.
+- Return JSON only.
+
+Decision state:
+${JSON.stringify(decisionState, null, 2)}
+`.trim()
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.1,
+    messages: [
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
+    ],
+    response_format: { type: "json_object" },
+  })
+
+  const raw = completion.choices[0].message.content || "{}"
+  return normalizeValidation(JSON.parse(raw))
+}
+
+function calculateReadinessScore(validation: ValidationResult): number {
+  const validCount = [
+    validation.intent.valid,
+    validation.resources.valid,
+    validation.risk_boundary.valid,
+    validation.execution_horizon.valid,
+  ].filter(Boolean).length
+
+  return Math.round((validCount / 4) * 100)
+}
+
+function detectMissingOrInvalidLayer(
+  state: DecisionState,
+  validation: ValidationResult
+): keyof DecisionState | null {
+  if (!state.intent.trim() || !validation.intent.valid) return "intent"
+  if (!state.resources.trim() || !validation.resources.valid) return "resources"
+  if (!state.risk_boundary.trim() || !validation.risk_boundary.valid) return "risk_boundary"
+  if (!state.execution_horizon.trim() || !validation.execution_horizon.valid) return "execution_horizon"
+  return null
+}
+
+function nextQuestionForLayer(layer: keyof DecisionState | null): string {
+  if (!layer) return ""
+
+  const questions: Record<keyof DecisionState, string> = {
+    intent: "What decision are you actually trying to make?",
+    resources: "What resources, budget, capacity, or practical limits shape this decision?",
+    risk_boundary: "What downside, conflict, or unacceptable impact must this decision avoid?",
+    execution_horizon: "What timing, deadline, or execution window makes this decision meaningful?",
+  }
+
+  return questions[layer]
+}
+
+function reasonForLayer(
+  layer: keyof DecisionState | null,
+  state: DecisionState,
+  validation: ValidationResult
+): string {
+  if (!layer) return ""
+
+  if (!state[layer].trim()) {
+    return "This TAC layer is still missing."
+  }
+
+  return validation[layer].reason || "This TAC layer is present but not yet valid."
+}
+
+function clamp10(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value)
+  if (Number.isNaN(n)) return 0
+  return Math.max(0, Math.min(10, n))
+}
+
+function scoreLabel10(value: number): string {
+  if (value >= 8) return "Strong"
+  if (value >= 5) return "Moderate"
+  if (value >= 3) return "Limited"
+  return "Low"
+}
+
+async function detectStructuralConflict(state: DecisionState): Promise<{
+  has_conflict: boolean
+  conflict_type: string
+  explanation: string
+}> {
+  const prompt = `
+Check whether the following TAC decision layers contain a meaningful structural contradiction.
+
+Return valid JSON only:
+
+{
+  "has_conflict": boolean,
+  "conflict_type": string,
+  "explanation": string
+}
+
+Rules:
+- Look for contradiction between intent, resources, risk_boundary, and execution_horizon.
+- Examples include feasibility mismatch, timing mismatch, unacceptable tradeoff, or internal conflict.
+- If there is no clear contradiction, return false and leave the other fields empty or minimal.
+- Return JSON only.
+
+Decision state:
+${JSON.stringify(state, null, 2)}
+`.trim()
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.1,
+    messages: [
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
+    ],
+    response_format: { type: "json_object" },
+  })
+
+  const raw = completion.choices[0].message.content || "{}"
+  const parsed = JSON.parse(raw)
+
+  return {
+    has_conflict: Boolean(parsed.has_conflict),
+    conflict_type: safeText(parsed.conflict_type),
+    explanation: safeText(parsed.explanation),
+  }
+}
+
+async function evaluateFullDecision(
+  state: DecisionState,
+  structuralConflict: {
+    has_conflict: boolean
+    conflict_type: string
+    explanation: string
+  }
+): Promise<{
+  alignment: number
+  tension: number
+  convergence: number
+  summary: string
+}> {
   const prompt = `
 You are a TAC evaluator.
 
-Evaluate this decision state across three axes:
+Evaluate this decision across three axes:
 
-- alignment: does the decision goal fit the actual situation?
-- tension: how much conflict, fragility, concentration risk, or tradeoff exists?
+- alignment: does the decision fit the user's actual goal and situation?
+- tension: how much conflict, fragility, tradeoff, or structural risk exists?
 - convergence: how ready is this decision for action now?
 
 Return valid JSON only in this exact format:
@@ -238,24 +338,25 @@ Return valid JSON only in this exact format:
   "summary": string
 }
 
-Scores must be 0 to 10.
+Rules:
+- Scores must be 0 to 10.
+- If there is structural conflict, tension should reflect that.
+- summary must be concise and decision-focused.
+- Return JSON only.
 
 Decision state:
 ${JSON.stringify(state, null, 2)}
+
+Structural conflict check:
+${JSON.stringify(structuralConflict, null, 2)}
 `.trim()
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     temperature: 0.2,
     messages: [
-      {
-        role: "system",
-        content: "Return valid JSON only. No markdown. No explanation.",
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
     ],
     response_format: { type: "json_object" },
   })
@@ -263,29 +364,78 @@ ${JSON.stringify(state, null, 2)}
   const raw = completion.choices[0].message.content || "{}"
   const parsed = JSON.parse(raw)
 
-  const alignment = clamp10(parsed.alignment)
-  const tension = clamp10(parsed.tension)
-  const convergence = clamp10(parsed.convergence)
-  const summary = String(parsed.summary || "").trim()
+  return {
+    alignment: clamp10(parsed.alignment),
+    tension: clamp10(parsed.tension),
+    convergence: clamp10(parsed.convergence),
+    summary: safeText(parsed.summary),
+  }
+}
 
-  return { alignment, tension, convergence, summary }
+function deriveRecommendation(
+  alignment: number,
+  tension: number,
+  convergence: number,
+  structuralConflict: { has_conflict: boolean }
+): string {
+  if (structuralConflict.has_conflict && tension >= 7) {
+    return "Needs clarification"
+  }
+
+  if (alignment >= 8 && tension <= 4 && convergence >= 8) {
+    return "Proceed"
+  }
+
+  if (alignment >= 7 && tension <= 6 && convergence >= 5) {
+    return "Proceed with caution"
+  }
+
+  if (alignment <= 4) {
+    return "Do not proceed"
+  }
+
+  if (convergence <= 4) {
+    return "Wait"
+  }
+
+  return "Needs clarification"
+}
+
+function deriveTopology(
+  alignment: number,
+  tension: number,
+  convergence: number,
+  structuralConflict: { has_conflict: boolean }
+): string {
+  if (structuralConflict.has_conflict) {
+    return "structural_tension"
+  }
+
+  if (alignment >= 8 && tension <= 4 && convergence >= 8) {
+    return "stable_alignment"
+  }
+
+  if (alignment >= 7 && tension <= 6 && convergence >= 5) {
+    return "actionable_with_risk"
+  }
+
+  if (alignment <= 4) {
+    return "structural_misalignment"
+  }
+
+  if (convergence <= 4) {
+    return "low_readiness"
+  }
+
+  return "uncertain_structure"
 }
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies()
-    const runsCookie = cookieStore.get("tac_runs")
-    let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
-
     const body = await req.json()
 
-    const email = String(body?.email || "").trim().toLowerCase()
-    const input = String(body?.input || "").trim()
-
-    const currentState: DecisionState = {
-      ...emptyState(),
-      ...(body?.decision_state || {}),
-    }
+    const email = safeText(body?.email).toLowerCase()
+    const input = safeText(body?.input)
 
     if (!input) {
       return NextResponse.json(
@@ -293,6 +443,10 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    const cookieStore = await cookies()
+    const runsCookie = cookieStore.get("tac_runs")
+    let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
 
     if (!UNLIMITED_EMAILS.includes(email) && runs >= FREE_LIMIT) {
       return NextResponse.json(
@@ -304,59 +458,96 @@ export async function POST(req: Request) {
       )
     }
 
-    const parsed = await parseIntoDecisionState(input, currentState)
-    const decision_state = mergeState(currentState, parsed)
+    const currentState: DecisionState = {
+      ...emptyDecisionState(),
+      ...(body?.decision_state || {}),
+    }
 
-    const readiness_score = readinessScore(decision_state)
-    const missing_layer = nextMissingLayer(decision_state)
+    const parsedLayers = await parseLatestInputIntoLayers(
+      input,
+      currentState
+    )
+
+    const decision_state = mergeDecisionState(currentState, parsedLayers)
+
+    const validation = await validateTacLayers(decision_state)
+    const readiness_score = calculateReadinessScore(validation)
+    const missing_layer = detectMissingOrInvalidLayer(decision_state, validation)
     const next_question = nextQuestionForLayer(missing_layer)
+    const missing_reason = reasonForLayer(missing_layer, decision_state, validation)
 
     if (!UNLIMITED_EMAILS.includes(email)) {
       runs += 1
     }
 
-    const baseResponse: any = {
-      decision_state,
-      readiness_score,
-      missing_layer,
-      next_question,
-      status:
-        missing_layer ? "needs_one_more_condition" : "ready_for_evaluation",
-    }
-
     if (missing_layer) {
-      const response = NextResponse.json(baseResponse)
+      const response = NextResponse.json({
+        decision_state,
+        validation,
+        readiness_score,
+        missing_layer,
+        missing_reason,
+        next_question,
+        recommendation: "",
+        topology: "",
+        summary: "",
+        alignment: 0,
+        alignment_label: "",
+        tension: 0,
+        tension_label: "",
+        convergence: 0,
+        convergence_label: "",
+        structural_conflict: false,
+        conflict_type: "",
+        conflict_explanation: "",
+        status: "needs_one_more_condition",
+      })
+
       response.cookies.set("tac_runs", String(runs), {
         httpOnly: false,
         path: "/",
         maxAge: 60 * 60 * 24 * 30,
       })
+
       return response
     }
 
-    const scored = await evaluateDecisionState(decision_state)
+    const structuralConflict = await detectStructuralConflict(decision_state)
+    const evaluated = await evaluateFullDecision(decision_state, structuralConflict)
+
     const recommendation = deriveRecommendation(
-      scored.alignment,
-      scored.tension,
-      scored.convergence
+      evaluated.alignment,
+      evaluated.tension,
+      evaluated.convergence,
+      structuralConflict
     )
+
     const topology = deriveTopology(
-      scored.alignment,
-      scored.tension,
-      scored.convergence
+      evaluated.alignment,
+      evaluated.tension,
+      evaluated.convergence,
+      structuralConflict
     )
 
     const response = NextResponse.json({
-      ...baseResponse,
-      alignment: scored.alignment,
-      alignment_label: scoreLabel10(scored.alignment),
-      tension: scored.tension,
-      tension_label: scoreLabel10(scored.tension),
-      convergence: scored.convergence,
-      convergence_label: scoreLabel10(scored.convergence),
-      topology,
+      decision_state,
+      validation,
+      readiness_score,
+      missing_layer: null,
+      missing_reason: "",
+      next_question: "",
       recommendation,
-      summary: scored.summary,
+      topology,
+      summary: evaluated.summary,
+      alignment: evaluated.alignment,
+      alignment_label: scoreLabel10(evaluated.alignment),
+      tension: evaluated.tension,
+      tension_label: scoreLabel10(evaluated.tension),
+      convergence: evaluated.convergence,
+      convergence_label: scoreLabel10(evaluated.convergence),
+      structural_conflict: structuralConflict.has_conflict,
+      conflict_type: structuralConflict.conflict_type,
+      conflict_explanation: structuralConflict.explanation,
       status: "decision_ready",
     })
 
@@ -367,10 +558,10 @@ export async function POST(req: Request) {
     })
 
     return response
-  } catch (err) {
-    console.error("tac route error:", err)
+  } catch (error) {
+    console.error("analyze route error:", error)
     return NextResponse.json(
-      { error: "TAC decision engine failed" },
+      { error: "Analysis unavailable. Please try again." },
       { status: 500 }
     )
   }

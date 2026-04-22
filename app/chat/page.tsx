@@ -41,6 +41,8 @@ type AnalyzeResult = {
   conflict_type: string
   conflict_explanation: string
 
+  segments?: string[]
+
   status: string
 }
 export default function ChatPage() {
@@ -195,6 +197,19 @@ export default function ChatPage() {
         </p>
       )}
 
+      {result.segments && result.segments.length > 0 && (   
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="font-semibold mb-3">
+            Parsed decision structure
+          </div>
+
+          <ul className="space-y-1 text-sm text-gray-700">
+            {result.segments.map((segment, idx) => (
+              <li key={idx}>• {segment}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {result && (
         <div className="mt-8 space-y-6">
 

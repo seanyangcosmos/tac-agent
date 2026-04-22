@@ -4,22 +4,45 @@ import Link from "next/link"
 import { useState } from "react"
 
 type AnalyzeResult = {
-  recommendation?: string
-  alignment?: number
-  alignment_label?: string
-  tension?: number
-  tension_label?: string
-  convergence?: number
-  convergence_label?: string
-  topology?: string
-  summary?: string
+  decision_state: {
+    intent: string
+    resources: string
+    risk_boundary: string
+    execution_horizon: string
+  }
 
-  readiness_score?: number
-  missing_layer?: string
-  next_question?: string
-  decision_state?: Record<string, any>
+  validation: {
+    intent: { valid: boolean; reason: string }
+    resources: { valid: boolean; reason: string }
+    risk_boundary: { valid: boolean; reason: string }
+    execution_horizon: { valid: boolean; reason: string }
+  }
+
+  readiness_score: number
+
+  missing_layer: string | null
+  missing_reason: string
+  next_question: string
+
+  recommendation: string
+  topology: string
+  summary: string
+
+  alignment: number
+  alignment_label: string
+
+  tension: number
+  tension_label: string
+
+  convergence: number
+  convergence_label: string
+
+  structural_conflict: boolean
+  conflict_type: string
+  conflict_explanation: string
+
+  status: string
 }
-
 export default function ChatPage() {
   const [query, setQuery] = useState("")
   const [result, setResult] = useState<AnalyzeResult | null>(null)

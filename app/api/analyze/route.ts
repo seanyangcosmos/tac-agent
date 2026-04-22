@@ -30,6 +30,75 @@ type ValidationResult = {
   execution_horizon: LayerValidation
 }
 
+const inferred = await inferTacStructure(input)
+
+const segments = inferred.segments
+const parsedLayers = inferred.parsedLayers
+
+const decision_state = mergeDecisionState(currentState, parsedLayers)
+
+async function inferTacStructure(input: string) {
+  const prompt = `
+You are a TAC decision-structure inference engine.
+
+Your job is to:
+1. split the user's input into meaningful decision segments
+2. map those segments into TAC layers
+
+TAC layers:
+- intent = the actual decision being made
+- resources = usable resources, budget, time, constraints, practical limits
+- risk_boundary = acceptable downside, conflict boundary, tradeoff limit, what must not be harmed
+- execution_horizon = timing, deadline, duration, execution window
+
+Return valid JSON only in this exact format:
+
+{
+  "segments": string[],
+  "intent": string,
+  "resources": string,
+  "risk_boundary": string,
+  "execution_horizon": string
+}
+
+Rules:
+- Keep original meaning faithful
+- Do not invent missing content
+- If a layer is missing, return ""
+- One input may contain multiple segments
+- Segments should be concise and meaningful
+- No markdown
+- No explanation outside JSON
+
+User input:
+${input}
+`.trim()
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.1,
+    messages: [
+      { role: "system", content: "Return valid JSON only." },
+      { role: "user", content: prompt },
+    ],
+    response_format: { type: "json_object" },
+  })
+
+  const raw = completion.choices[0].message.content || "{}"
+  const parsed = JSON.parse(raw)
+
+  return {
+    segments: Array.isArray(parsed.segments) ? parsed.segments.map((x: any) => String(x).trim()).filter(Boolean) : [],
+    parsedLayers: {
+      intent: safeText(parsed.intent),
+      resources: safeText(parsed.resources),
+      risk_boundary: safeText(parsed.risk_boundary),
+      execution_horizon: safeText(parsed.execution_horizon),
+    },
+  }
+}
+
+
 function emptyDecisionState(): DecisionState {
   return {
     intent: "",
@@ -482,6 +551,7 @@ export async function POST(req: Request) {
 
     if (missing_layer) {
       const response = NextResponse.json({
+        segments,
         decision_state,
         validation,
         readiness_score,
@@ -530,6 +600,7 @@ export async function POST(req: Request) {
     )
 
     const response = NextResponse.json({
+      segmants,
       decision_state,
       validation,
       readiness_score,
