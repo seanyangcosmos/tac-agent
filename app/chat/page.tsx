@@ -23,6 +23,7 @@ export default function ChatPage() {
   const [layer1, setLayer1] = useState("")
   const [layer2, setLayer2] = useState("")
   const [context, setContext] = useState("")
+  const [decisionState, setDecisionState] = useState({})
 
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
@@ -48,11 +49,9 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           email,
-          query,
-          context,
-          layer1,
-          layer2,
-        }),
+          input: query,
+          decision_state: decisionState,
+        })
       })
 
       const data = await response.json()
@@ -66,6 +65,7 @@ export default function ChatPage() {
       }
 
       setResult(data)
+      setDecisionState(data.decision_state || {})
     } catch (error) {
       alert("Analysis unavailable. Please try again.")
     } finally {
@@ -163,20 +163,31 @@ export default function ChatPage() {
       {result && (
         <div className="border rounded-xl p-6">
 
-          <h2 className="text-xl font-semibold mb-2">
-            Recommendation
-          </h2>
+          {result.recommendation && !result.next_question && (
+            <>
+              <h2 className="text-xl font-semibold mb-2">
+                Recommendation
+              </h2>
 
-          <p className="text-lg mb-4">
-            {result.recommendation}
-          </p>
-          {result.recommendation === "One key condition missing" && (
-            <div className="mt-4 rounded-lg border p-4">
-              <h3 className="font-semibold mb-2">One more thing needed</h3>
-              <p className="mb-2">
-                Missing condition: {result.missing_condition}
+              <p className="text-lg mb-4">
+                {result.recommendation}
               </p>
-              <p>{result.follow_up_question}</p>
+            </>
+          )}
+
+          {result.next_question && (
+            <div className="mt-4 rounded-lg border p-4">
+              <h3 className="font-semibold mb-2">
+                One more thing needed
+              </h3>
+
+              <p className="mb-2">
+                Missing layer: {result.missing_layer}
+              </p>
+
+              <p className="text-lg font-medium">
+                {result.next_question}
+              </p>
             </div>
           )}
           <h3 className="font-semibold mt-6 mb-2">
