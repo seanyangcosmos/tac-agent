@@ -16,9 +16,9 @@ type DecisionState = {
   execution_horizon: string
 }
 
-type ParsedInput = Partial<DecisionState>
+type ParsedLayers = Partial<DecisionState>
 
-function emptyState(): DecisionState {
+function emptyDecisionState(): DecisionState {
   return {
     intent: "",
     resources: "",
@@ -27,16 +27,20 @@ function emptyState(): DecisionState {
   }
 }
 
-function mergeState(current: DecisionState, parsed: ParsedInput): DecisionState {
+function mergeDecisionState(
+  current: DecisionState,
+  parsed: ParsedLayers
+): DecisionState {
   return {
-    intent: parsed.intent || current.intent,
-    resources: parsed.resources || current.resources,
-    risk_boundary: parsed.risk_boundary || current.risk_boundary,
-    execution_horizon: parsed.execution_horizon || current.execution_horizon,
+    intent: parsed.intent?.trim() || current.intent,
+    resources: parsed.resources?.trim() || current.resources,
+    risk_boundary: parsed.risk_boundary?.trim() || current.risk_boundary,
+    execution_horizon:
+      parsed.execution_horizon?.trim() || current.execution_horizon,
   }
 }
 
-function layerStatus(state: DecisionState) {
+function layerPresence(state: DecisionState) {
   return {
     intent: Boolean(state.intent.trim()),
     resources: Boolean(state.resources.trim()),
@@ -45,26 +49,22 @@ function layerStatus(state: DecisionState) {
   }
 }
 
-function readinessScore(state: DecisionState) {
-  const layers = layerStatus(state)
-  const weights = {
-    intent: 35,
-    resources: 30,
-    risk_boundary: 20,
-    execution_horizon: 15,
-  }
+function calculateReadinessScore(state: DecisionState): number {
+  const layers = layerPresence(state)
 
   let score = 0
-  if (layers.intent) score += weights.intent
-  if (layers.resources) score += weights.resources
-  if (layers.risk_boundary) score += weights.risk_boundary
-  if (layers.execution_horizon) score += weights.execution_horizon
+  if (layers.intent) score += 35
+  if (layers.resources) score += 30
+  if (layers.risk_boundary) score += 20
+  if (layers.execution_horizon) score += 15
 
   return score
 }
 
-function nextMissingLayer(state: DecisionState): keyof DecisionState | null {
-  const layers = layerStatus(state)
+function detectMissingLayer(
+  state: DecisionState
+): keyof DecisionState | null {
+  const layers = layerPresence(state)
 
   if (!layers.intent) return "intent"
   if (!layers.resources) return "resources"
@@ -74,13 +74,13 @@ function nextMissingLayer(state: DecisionState): keyof DecisionState | null {
   return null
 }
 
-function nextQuestionForLayer(layer: keyof DecisionState | null) {
+function nextQuestionForLayer(layer: keyof DecisionState | null): string {
   if (!layer) return ""
 
   const questions: Record<keyof DecisionState, string> = {
     intent: "What decision are you trying to make?",
     resources: "What resources, budget, or constraints will shape this decision?",
-    risk_boundary: "What downside risk, loss, or tradeoff can you accept?",
+    risk_boundary: "What risks, tradeoffs, or downside can you accept?",
     execution_horizon: "What is your intended timing or time horizon for this decision?",
   }
 
@@ -93,7 +93,7 @@ function clamp10(value: unknown): number {
   return Math.max(0, Math.min(10, n))
 }
 
-function scoreLabel10(value: number) {
+function scoreLabel10(value: number): string {
   if (value >= 8) return "Strong"
   if (value >= 5) return "Moderate"
   if (value >= 3) return "Limited"
@@ -104,25 +104,21 @@ function deriveRecommendation(
   alignment: number,
   tension: number,
   convergence: number
-) {
-  if (alignment >= 7 && tension <= 4 && convergence >= 8) {
+): string {
+  if (alignment >= 8 && tension <= 4 && convergence >= 8) {
     return "Proceed"
   }
 
-  if (alignment >= 7 && tension <= 4 && convergence >= 5) {
+  if (alignment >= 7 && tension <= 5 && convergence >= 6) {
     return "Proceed with caution"
-  }
-
-  if (alignment >= 7 && tension >= 7) {
-    return "Needs clarification"
-  }
-
-  if (convergence <= 4) {
-    return "Wait"
   }
 
   if (alignment <= 4) {
     return "Do not proceed"
+  }
+
+  if (convergence <= 4) {
+    return "Wait"
   }
 
   return "Needs clarification"
@@ -132,43 +128,43 @@ function deriveTopology(
   alignment: number,
   tension: number,
   convergence: number
-) {
-  if (alignment >= 7 && tension <= 4 && convergence >= 8) {
+): string {
+  if (alignment >= 8 && tension <= 4 && convergence >= 8) {
     return "stable_alignment"
   }
 
-  if (alignment >= 7 && tension <= 4 && convergence >= 5) {
+  if (alignment >= 7 && tension <= 5 && convergence >= 6) {
     return "actionable_with_risk"
-  }
-
-  if (alignment >= 7 && tension >= 7) {
-    return "latent_conflict"
-  }
-
-  if (convergence <= 4) {
-    return "low_readiness"
   }
 
   if (alignment <= 4) {
     return "structural_misalignment"
   }
 
+  if (convergence <= 4) {
+    return "low_readiness"
+  }
+
+  if (tension >= 7) {
+    return "latent_conflict"
+  }
+
   return "uncertain_structure"
 }
 
-async function parseIntoDecisionState(
-  userInput: string,
+async function parseLatestInputIntoLayers(
+  latestInput: string,
   currentState: DecisionState
-): Promise<ParsedInput> {
+): Promise<ParsedLayers> {
   const prompt = `
 You are a decision-structure parser.
 
-Map the user's latest input into one or more of these four layers:
+Map ONLY the user's latest input into one or more of these four layers:
 
 1. intent = what decision the user is trying to make
-2. resources = budget, resources, limits, constraints
-3. risk_boundary = acceptable downside, tradeoff, safety buffer, risk tolerance
-4. execution_horizon = timing, holding period, short-term vs long-term, when to act
+2. resources = budget, resources, constraints, conditions, practical limits
+3. risk_boundary = risk tolerance, downside, tradeoff, concerns, safety buffer
+4. execution_horizon = timing, deadline, short-term vs long-term, when to act, duration
 
 Return valid JSON only in this exact format:
 
@@ -181,15 +177,17 @@ Return valid JSON only in this exact format:
 
 Rules:
 - Only extract what is clearly present in the latest input.
-- If a layer is not present, return "" for that field.
-- Do not rewrite existing state.
-- Do not infer missing layers unless directly stated.
+- If a layer is not present in the latest input, return "" for that field.
+- Do not overwrite existing state unless the latest input clearly belongs to that layer.
+- Keep the extracted text concise and faithful.
+- No markdown.
+- No explanation.
 
 Current decision state:
 ${JSON.stringify(currentState, null, 2)}
 
 Latest user input:
-${userInput}
+${latestInput}
 `.trim()
 
   const completion = await openai.chat.completions.create({
@@ -198,7 +196,7 @@ ${userInput}
     messages: [
       {
         role: "system",
-        content: "Return valid JSON only. No markdown. No explanation.",
+        content: "Return valid JSON only.",
       },
       {
         role: "user",
@@ -212,20 +210,27 @@ ${userInput}
   const parsed = JSON.parse(raw)
 
   return {
-    intent: String(parsed.intent || "").trim(),
-    resources: String(parsed.resources || "").trim(),
-    risk_boundary: String(parsed.risk_boundary || "").trim(),
-    execution_horizon: String(parsed.execution_horizon || "").trim(),
+    intent: String(parsed.intent || ""),
+    resources: String(parsed.resources || ""),
+    risk_boundary: String(parsed.risk_boundary || ""),
+    execution_horizon: String(parsed.execution_horizon || ""),
   }
 }
 
-async function evaluateDecisionState(state: DecisionState) {
+async function evaluateFullDecision(
+  state: DecisionState
+): Promise<{
+  alignment: number
+  tension: number
+  convergence: number
+  summary: string
+}> {
   const prompt = `
 You are a TAC evaluator.
 
-Evaluate this decision state across three axes:
+Evaluate this fully-formed decision across three axes:
 
-- alignment: does the decision goal fit the actual situation?
+- alignment: does the decision fit the user's actual goal and situation?
 - tension: how much conflict, fragility, concentration risk, or tradeoff exists?
 - convergence: how ready is this decision for action now?
 
@@ -238,7 +243,11 @@ Return valid JSON only in this exact format:
   "summary": string
 }
 
-Scores must be 0 to 10.
+Rules:
+- Scores must be 0 to 10.
+- summary must be concise, practical, and decision-focused.
+- No markdown.
+- No explanation outside JSON.
 
 Decision state:
 ${JSON.stringify(state, null, 2)}
@@ -250,7 +259,7 @@ ${JSON.stringify(state, null, 2)}
     messages: [
       {
         role: "system",
-        content: "Return valid JSON only. No markdown. No explanation.",
+        content: "Return valid JSON only.",
       },
       {
         role: "user",
@@ -263,29 +272,23 @@ ${JSON.stringify(state, null, 2)}
   const raw = completion.choices[0].message.content || "{}"
   const parsed = JSON.parse(raw)
 
-  const alignment = clamp10(parsed.alignment)
-  const tension = clamp10(parsed.tension)
-  const convergence = clamp10(parsed.convergence)
-  const summary = String(parsed.summary || "").trim()
-
-  return { alignment, tension, convergence, summary }
+  return {
+    alignment: clamp10(parsed.alignment),
+    tension: clamp10(parsed.tension),
+    convergence: clamp10(parsed.convergence),
+    summary: String(parsed.summary || "").trim(),
+  }
 }
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies()
-    const runsCookie = cookieStore.get("tac_runs")
-    let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
-
     const body = await req.json()
 
-    const email = String(body?.email || "").trim().toLowerCase()
-    const input = String(body?.input || "").trim()
+    const email = String(body?.email || "")
+      .trim()
+      .toLowerCase()
 
-    const currentState: DecisionState = {
-      ...emptyState(),
-      ...(body?.decision_state || {}),
-    }
+    const input = String(body?.input || "").trim()
 
     if (!input) {
       return NextResponse.json(
@@ -293,6 +296,10 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+
+    const cookieStore = await cookies()
+    const runsCookie = cookieStore.get("tac_runs")
+    let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
 
     if (!UNLIMITED_EMAILS.includes(email) && runs >= FREE_LIMIT) {
       return NextResponse.json(
@@ -304,59 +311,84 @@ export async function POST(req: Request) {
       )
     }
 
-    const parsed = await parseIntoDecisionState(input, currentState)
-    const decision_state = mergeState(currentState, parsed)
+    const currentState: DecisionState = {
+      ...emptyDecisionState(),
+      ...(body?.decision_state || {}),
+    }
 
-    const readiness_score = readinessScore(decision_state)
-    const missing_layer = nextMissingLayer(decision_state)
+    const parsedLayers = await parseLatestInputIntoLayers(
+      input,
+      currentState
+    )
+
+    const decision_state = mergeDecisionState(
+      currentState,
+      parsedLayers
+    )
+
+    const readiness_score = calculateReadinessScore(decision_state)
+    const missing_layer = detectMissingLayer(decision_state)
     const next_question = nextQuestionForLayer(missing_layer)
 
     if (!UNLIMITED_EMAILS.includes(email)) {
       runs += 1
     }
 
-    const baseResponse: any = {
-      decision_state,
-      readiness_score,
-      missing_layer,
-      next_question,
-      status:
-        missing_layer ? "needs_one_more_condition" : "ready_for_evaluation",
-    }
-
     if (missing_layer) {
-      const response = NextResponse.json(baseResponse)
+      const response = NextResponse.json({
+        decision_state,
+        readiness_score,
+        missing_layer,
+        next_question,
+        recommendation: "",
+        topology: "",
+        summary: "",
+        alignment: 0,
+        alignment_label: "",
+        tension: 0,
+        tension_label: "",
+        convergence: 0,
+        convergence_label: "",
+        status: "needs_one_more_condition",
+      })
+
       response.cookies.set("tac_runs", String(runs), {
         httpOnly: false,
         path: "/",
         maxAge: 60 * 60 * 24 * 30,
       })
+
       return response
     }
 
-    const scored = await evaluateDecisionState(decision_state)
+    const evaluated = await evaluateFullDecision(decision_state)
+
     const recommendation = deriveRecommendation(
-      scored.alignment,
-      scored.tension,
-      scored.convergence
+      evaluated.alignment,
+      evaluated.tension,
+      evaluated.convergence
     )
+
     const topology = deriveTopology(
-      scored.alignment,
-      scored.tension,
-      scored.convergence
+      evaluated.alignment,
+      evaluated.tension,
+      evaluated.convergence
     )
 
     const response = NextResponse.json({
-      ...baseResponse,
-      alignment: scored.alignment,
-      alignment_label: scoreLabel10(scored.alignment),
-      tension: scored.tension,
-      tension_label: scoreLabel10(scored.tension),
-      convergence: scored.convergence,
-      convergence_label: scoreLabel10(scored.convergence),
-      topology,
+      decision_state,
+      readiness_score,
+      missing_layer: null,
+      next_question: "",
       recommendation,
-      summary: scored.summary,
+      topology,
+      summary: evaluated.summary,
+      alignment: evaluated.alignment,
+      alignment_label: scoreLabel10(evaluated.alignment),
+      tension: evaluated.tension,
+      tension_label: scoreLabel10(evaluated.tension),
+      convergence: evaluated.convergence,
+      convergence_label: scoreLabel10(evaluated.convergence),
       status: "decision_ready",
     })
 
@@ -367,10 +399,10 @@ export async function POST(req: Request) {
     })
 
     return response
-  } catch (err) {
-    console.error("tac route error:", err)
+  } catch (error) {
+    console.error("analyze route error:", error)
     return NextResponse.json(
-      { error: "TAC decision engine failed" },
+      { error: "Analysis unavailable. Please try again." },
       { status: 500 }
     )
   }
