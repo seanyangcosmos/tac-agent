@@ -526,20 +526,6 @@ export async function POST(req: Request) {
     const parsedLayers = inferred.parsedLayers
     const decision_state = mergeDecisionState(currentState, parsedLayers)
 
-    const cookieStore = await cookies()
-    const runsCookie = cookieStore.get("tac_runs")
-    let runs = runsCookie ? parseInt(runsCookie.value, 10) : 0
-
-    if (!UNLIMITED_EMAILS.includes(email) && runs >= FREE_LIMIT) {
-      return NextResponse.json(
-        {
-          error: "limit reached",
-          upgrade: true,
-        },
-        { status: 403 }
-      )
-    }
-
     const validation = await validateTacLayers(decision_state)
     const readiness_score = calculateReadinessScore(validation)
     const missing_layer = detectMissingOrInvalidLayer(decision_state, validation)
@@ -550,9 +536,7 @@ export async function POST(req: Request) {
       validation
     )
 
-    if (!UNLIMITED_EMAILS.includes(email)) {
-      runs += 1
-    }
+    const UNLIMITED_EMAILS = ["sean4128@gmail.com"]
 
     if (missing_layer) {
       const response = NextResponse.json({

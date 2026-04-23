@@ -18,10 +18,12 @@ export async function POST(req: Request) {
       )
     }
 
-    const { error } = await supabaseAdmin.from("usage_logs").insert({
-      user_id,
-      action,
-    })
+    const { error } = await supabaseAdmin
+      .from("usage_logs")
+      .insert({
+        user_id,
+        action,
+      })
 
     if (error) {
       console.error("log_run insert error:", error)
