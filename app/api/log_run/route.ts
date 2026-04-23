@@ -34,6 +34,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error("log_run route error:", error)
+    await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/log_run`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: email,
+        }),  
+      }
+    )
+
     return NextResponse.json(
       { error: "server error" },
       { status: 500 }
