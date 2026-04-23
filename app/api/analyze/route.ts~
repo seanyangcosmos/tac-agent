@@ -565,7 +565,7 @@ export async function POST(req: Request) {
         status: "needs_one_more_condition",
       })
 
-      const runs = Number(req.cookies.get("tac_runs")?.value || 0) + 1
+      const runs = Number(cookies().get("tac_runs")?.value || 0) + 1
 
       response.cookies.set("tac_runs", String(runs), {
         httpOnly: false,
