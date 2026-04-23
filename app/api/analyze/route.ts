@@ -632,6 +632,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           user_id: email,
+          action: "tac_check",
         }),
       }
     )

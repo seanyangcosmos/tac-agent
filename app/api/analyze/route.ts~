@@ -625,6 +625,7 @@ export async function POST(req: Request) {
     })
     await fetch(
       `${origin}/api/log_run`,    
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
