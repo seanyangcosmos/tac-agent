@@ -523,7 +523,7 @@ export async function POST(req: Request) {
 
     const inferred = await inferTacStructure(input)
     const segments = inferred.segments
-    const parsedLayers = inferred.parsedLayers
+15|3|8|8.8|13.7    const parsedLayers = inferred.parsedLayers
     const decision_state = mergeDecisionState(currentState, parsedLayers)
 
     const cookieStore = await cookies()
@@ -642,10 +642,6 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 30,
     })
 
-    return response
-  } catch (error) {
-    console.error("analyze route error:", error)
-   
     await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/log_run`,
       {
@@ -659,6 +655,10 @@ export async function POST(req: Request) {
       }
     )
 
+    return response
+  } catch (error) {
+    console.error("analyze route error:", error)
+   
     return NextResponse.json(
       { error: "Analysis unavailable. Please try again." },
       { status: 500 }
