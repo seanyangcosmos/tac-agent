@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
+    "@supabase/supabase-js": "^2.104.0",
     "ai": "latest",
     "next": "latest",
     "openai": "^6.34.0",

@@ -1,0 +1,42 @@
+import { NextResponse } from "next/server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+
+function safeText(value: unknown): string {
+  return String(value || "").trim()
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    const user_id = safeText(body?.user_id)
+    const action = safeText(body?.action) || "tac_check"
+
+    if (!user_id) {
+      return NextResponse.json(
+        { error: "user_id required" },
+        { status: 400 }
+      )
+    }
+
+    const { error } = await supabaseAdmin.from("usage_logs").insert({
+      user_id,
+      action,
+    })
+
+    if (error) {
+      console.error("log_run insert error:", error)
+      return NextResponse.json(
+        { error: "failed to log run" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error("log_run route error:", error)
+    return NextResponse.json(
+      { error: "server error" },
+      { status: 500 }
+    )
+  }
+}
