@@ -65,6 +65,14 @@ export default function ChatPage() {
   const [activeStep, setActiveStep] = useState(0)
   const [showStructuredFields, setShowStructuredFields] = useState(false)
 
+  const [usageInfo, setUsageInfo] = useState<{
+    plan: string
+    used: number
+    limit: number | null
+    remaining: number | null
+  } | null>(null)
+
+
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
 
@@ -86,6 +94,40 @@ export default function ChatPage() {
       const combinedInput = [query.trim(), layer1.trim(), layer2.trim(), context.trim()]
         .filter(Boolean)
         .join("\n")
+
+      const quotaRes = await fetch("/api/check_quota", {
+        method: "POST", 
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: email,
+        }),
+      })
+
+      const quotaData = await quotaRes.json()
+
+      if (!quotaRes.ok) {
+        throw new Error(quotaData.error || "Quota check failed")
+      }
+
+      setUsageInfo({
+        plan: quotaData.plan,
+        used: quotaData.used,
+        limit: quotaData.limit,
+        remaining: quotaData.remaining,
+      })
+
+      if (!quotaData.allowed) {
+        if (quotaData.plan === "free") {
+          alert("You have used all 5 free decision checks.")
+        } else if (quotaData.plan === "pro") {
+          alert("You have used all 150 Pro decision checks for this month.")
+        }
+        return
+      }
+
+
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -138,6 +180,39 @@ export default function ChatPage() {
 
     try {
       const email = localStorage.getItem("email") || "sean4128@gmail.com"
+
+      const quotaRes = await fetch("/api/check_quota", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: email,
+        }),
+      })
+
+      const quotaData = await quotaRes.json()
+
+      if (!quotaRes.ok) {
+        throw new Error(quotaData.error || "Quota check failed")
+      }
+
+      setUsageInfo({
+        plan: quotaData.plan,
+        used: quotaData.used,
+        limit: quotaData.limit,
+        remaining: quotaData.remaining,
+      })
+
+      if (!quotaData.allowed) {
+        if (quotaData.plan === "free") {
+          alert("You have used all 5 free decision checks.")
+        } else if (quotaData.plan === "pro") {
+          alert("You have used all 150 Pro decision checks for this month.")
+        }
+        return
+      }
+
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -294,7 +369,21 @@ export default function ChatPage() {
           explore sycds.com
         </button>
     
-  </div>
+        {usageInfo && (
+          <div className="mb-6 text-sm text-gray-600">
+            {usageInfo.plan === "unlimited" ? (
+              <span>Plan: Unlimited</span>
+            ) : (
+              <span>
+                Plan: {usageInfo.plan} · Used: {usageInfo.used}
+                {usageInfo.limit !== null ? ` / ${usageInfo.limit}` : ""} · Remaining:{" "}
+                {usageInfo.remaining ?? 0}
+              </span>
+            )}
+          </div>
+        )}
+
+   </div>
 
       <p className="text-gray-600 text-sm mb-8">
         TAC Agent helps you understand whether a decision makes sense, has hidden

@@ -3,49 +3,87 @@ import { supabaseAdmin } from "../../../lib/supabase-admin"
 
 const FREE_LIMIT = 5
 const PRO_LIMIT = 150
+const UNLIMITED_EMAILS = ["sean4128@gmail.com"]
+
+function safeText(value: unknown): string {
+  return String(value || "").trim().toLowerCase()
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const user_id = String(body.user_id || "").trim()
+    const user_id = safeText(body?.user_id || body?.email)
 
     if (!user_id) {
-      return NextResponse.json({ error: "missing user_id" }, { status: 400 })
+      return NextResponse.json(
+        { error: "user_id required" },
+        { status: 400 }
+      )
     }
 
-    // 1️⃣ 讀 subscription
-    const { data: sub } = await supabaseAdmin
+    if (UNLIMITED_EMAILS.includes(user_id)) {
+      return NextResponse.json({
+        allowed: true,
+        plan: "unlimited",
+        used: 0,
+        limit: null,
+        remaining: null,
+      })
+    }
+
+    const { data: subscription, error: subError } = await supabaseAdmin
       .from("subscriptions")
       .select("plan,status")
       .eq("user_id", user_id)
-      .single()
+      .eq("status", "active")
+      .maybeSingle()
 
-    let plan = "free"
-
-    if (sub && sub.status === "active") {
-      plan = sub.plan
+    if (subError) {
+      console.error("check_quota subscription error:", subError)
+      return NextResponse.json(
+        { error: "failed to check subscription" },
+        { status: 500 }
+      )
     }
 
+    const plan = subscription?.plan === "pro" ? "pro" : "free"
     const limit = plan === "pro" ? PRO_LIMIT : FREE_LIMIT
 
-    // 2️⃣ 計算 usage
-    const { count } = await supabaseAdmin
+    const monthStart = new Date()
+    monthStart.setUTCDate(1)
+    monthStart.setUTCHours(0, 0, 0, 0)
+
+    const { count, error: countError } = await supabaseAdmin
       .from("usage_logs")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user_id)
+      .eq("action", "tac_check")
+      .gte("created_at", monthStart.toISOString())
 
-    const runs_used = count || 0
-    const runs_left = Math.max(limit - runs_used, 0)
+    if (countError) {
+      console.error("check_quota usage count error:", countError)
+      return NextResponse.json(
+        { error: "failed to check usage" },
+        { status: 500 }
+      )
+    }
+
+    const used = count || 0
+    const remaining = Math.max(limit - used, 0)
+    const allowed = used < limit
 
     return NextResponse.json({
-      allowed: runs_left > 0,
+      allowed,
       plan,
-      runs_used,
-      runs_limit: limit,
-      runs_left,
-      upgrade_required: runs_left === 0
+      used,
+      limit,
+      remaining,
     })
-  } catch (err) {
-    return NextResponse.json({ error: "server_error" }, { status: 500 })
+  } catch (error) {
+    console.error("check_quota route error:", error)
+    return NextResponse.json(
+      { error: "server error" },
+      { status: 500 }
+    )
   }
 }
