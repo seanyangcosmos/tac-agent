@@ -483,6 +483,12 @@ export async function POST(req: Request) {
     const body = await req.json()
 
     const email = safeText(body?.email).toLowerCase()
+    if (!email) {
+      return NextResponse.json(
+        { error: "email required" },
+        { status: 400 }
+      )
+    }
     const input = safeText(body?.input)
 
     if (!input) {
@@ -490,6 +496,24 @@ export async function POST(req: Request) {
         { error: "input required" },
         { status: 400 }
       )
+    }
+    const quotaCheck = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/check_quota`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: email,
+        }),
+      }
+    )
+
+    const quotaData = await quotaCheck.json()
+
+    if (!quotaData.allowed) {
+      return NextResponse.json({ upgrade: true })
     }
 
     const currentState: DecisionState = {
@@ -621,6 +645,20 @@ export async function POST(req: Request) {
     return response
   } catch (error) {
     console.error("analyze route error:", error)
+   
+    await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/log_run`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: email,
+        }),
+      }
+    )
+
     return NextResponse.json(
       { error: "Analysis unavailable. Please try again." },
       { status: 500 }
