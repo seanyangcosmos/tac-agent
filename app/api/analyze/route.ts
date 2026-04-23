@@ -523,7 +523,7 @@ export async function POST(req: Request) {
 
     const inferred = await inferTacStructure(input)
     const segments = inferred.segments
-15|3|8|8.8|13.7    const parsedLayers = inferred.parsedLayers
+    const parsedLayers = inferred.parsedLayers
     const decision_state = mergeDecisionState(currentState, parsedLayers)
 
     const cookieStore = await cookies()
