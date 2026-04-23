@@ -285,7 +285,7 @@ export default function ChatPage() {
           }}
           className="border px-6 py-3 rounded-lg"
         >
-          Upgrade to Pro ($29/month)
+          Upgrade to Pro ($29/month)for 150 decision checkso
         </button>
         <button
           onClick={() => window.open("https://sycds.com", "_blank")}
