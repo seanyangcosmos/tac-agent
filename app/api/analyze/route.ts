@@ -490,6 +490,7 @@ export async function POST(req: Request) {
       )
     }
     const input = safeText(body?.input)
+    const origin = new URL(req.url).origin    
 
     if (!input) {
       return NextResponse.json(
@@ -498,7 +499,7 @@ export async function POST(req: Request) {
       )
     }
     const quotaCheck = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/check_quota`,
+      `${origin}/api/check_quota`,
       {
         method: "POST",
         headers: {
@@ -622,10 +623,8 @@ export async function POST(req: Request) {
         : "",
       status: "decision_ready",
     })
-    
     await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/log_run`,
-      {
+      `${origin}/api/log_run`,    
         method: "POST",
         headers: {
           "Content-Type": "application/json",

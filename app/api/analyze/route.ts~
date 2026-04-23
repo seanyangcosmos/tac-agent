@@ -565,7 +565,8 @@ export async function POST(req: Request) {
         status: "needs_one_more_condition",
       })
 
-      const runs = Number(cookies().get("tac_runs")?.value || 0) + 1
+      const cookieStore = await cookies()
+      const runs = Number(cookieStore.get("tac_runs")?.value || 0) + 1
 
       response.cookies.set("tac_runs", String(runs), {
         httpOnly: false,
@@ -621,13 +622,7 @@ export async function POST(req: Request) {
         : "",
       status: "decision_ready",
     })
-
-    response.cookies.set("tac_runs", String(runs), {
-      httpOnly: false,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    })
-
+    
     await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/log_run`,
       {
