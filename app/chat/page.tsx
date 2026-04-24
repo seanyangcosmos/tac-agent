@@ -279,6 +279,9 @@ export default function ChatPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="mb-4">
+        <a href="https://sycds.com" style={{fontFamily:"monospace", fontSize:"11px", color:"#1f3fa8", textDecoration:"none", letterSpacing:"0.1em", opacity:0.6}}>← SYCDS</a>
+      </div>
       <h1 className="text-3xl font-semibold mb-6">
         What decision are you trying to make?
       </h1>
