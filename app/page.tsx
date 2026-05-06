@@ -9,7 +9,7 @@ export default function Home() {
         </h1>
 
         <p className="mt-4 text-lg md:text-xl text-gray-500 font-medium tracking-wide uppercase">
-          Target Alignment Criteria Agent
+        
         </p>
 
         <p className="mt-8 text-lg md:text-xl text-gray-500 leading-relaxed">
