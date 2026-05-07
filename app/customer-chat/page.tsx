@@ -2,23 +2,6 @@
 
 import { useState } from "react"
 import { useEffect } from "react"
-export default function CustomerChatPage() {
-useEffect(() => {
-  async function ensureRuntime() {
-    try {
-      await fetch("http://localhost:4318/analyze", {
-        method: "OPTIONS",
-      })
-    } catch {
-      await fetch("/api/bootstrap", {
-        method: "POST",
-      })
-    }
-  }
-
-  ensureRuntime()
-}, [])
-
 
 type AnalyzeResult = {
   segments?: string[]
@@ -62,6 +45,21 @@ type DecisionState = {
 }
 
 export default function CustomerChatPage() {
+useEffect(() => {                                                                                                                                                                                  
+   async function ensureRuntime() {                                                                                                                                                                 
+     try {                                                                                                                                                                                          
+       await fetch("http://localhost:4318/analyze", {                                                                                                                                               
+         method: "OPTIONS",                                                                                                                                                                         
+       })                                                                                                                                                                                           
+     } catch {                                                                                                                                                                                      
+       await fetch("/api/bootstrap", {                                                                                                                                                              
+         method: "POST",                                                                                                                                                                            
+       })                                                                                                                                                                                           
+     }                                                                                                                                                                                              
+   }                                                                                                                                                                                                
+                                                                                                                                                                                                    
+   ensureRuntime()                                                                                                                                                                                  
+ }, [])                                       
   const [query, setQuery] = useState("")
   const [context, setContext] = useState("")
   const [layer1, setLayer1] = useState("")
@@ -476,5 +474,4 @@ export default function CustomerChatPage() {
       )}
     </div>
   )
-}
 }

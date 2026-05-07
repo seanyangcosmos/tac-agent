@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useEffect } from "react"
-
+export default function CustomerChatPage() {
 useEffect(() => {
   async function ensureRuntime() {
     try {
@@ -476,4 +476,5 @@ export default function CustomerChatPage() {
       )}
     </div>
   )
+}
 }
