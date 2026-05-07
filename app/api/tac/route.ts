@@ -1,6 +1,11 @@
 import { generateText, Output } from "ai"
-import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
+import { createOpenAI } from "@ai-sdk/openai"
+
+const deepseek = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: "https://api.deepseek.com",
+})
 
 const tacAnalysisSchema = z.object({
   alignment: z.string(),
@@ -35,7 +40,7 @@ export async function POST(req: Request) {
   }
 
   const { output } = await generateText({
-    model: openai("gpt-4o"),
+    model: deepseek("Deepseek-V4-Flash"),
     output: Output.object({
       schema: tacAnalysisSchema,
     }),

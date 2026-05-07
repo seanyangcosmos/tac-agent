@@ -1,7 +1,24 @@
 "use client"
 
-import Link from "next/link"
 import { useState } from "react"
+import { useEffect } from "react"
+
+useEffect(() => {
+  async function ensureRuntime() {
+    try {
+      await fetch("http://localhost:4318/analyze", {
+        method: "OPTIONS",
+      })
+    } catch {
+      await fetch("/api/bootstrap", {
+        method: "POST",
+      })
+    }
+  }
+
+  ensureRuntime()
+}, [])
+
 
 type AnalyzeResult = {
   segments?: string[]
@@ -33,14 +50,7 @@ type AnalyzeResult = {
   structural_conflict: boolean
   conflict_type: string
   conflict_explanation: string
-  repair_target?: {
-    target_edge: string
-    verification_type: string
-    question_logic: string
-    suggested_question: string
-  } | null
   repair_question?: string
-  clarification_mode?: string
   status: string
 }
 
@@ -51,7 +61,7 @@ type DecisionState = {
   execution_horizon?: string
 }
 
-export default function ChatPage() {
+export default function CustomerChatPage() {
   const [query, setQuery] = useState("")
   const [context, setContext] = useState("")
   const [layer1, setLayer1] = useState("")
@@ -65,13 +75,7 @@ export default function ChatPage() {
   const [activeStep, setActiveStep] = useState(0)
   const [showStructuredFields, setShowStructuredFields] = useState(false)
 
-  const [usageInfo, setUsageInfo] = useState<{
-    plan: string
-    used: number
-    limit: number | null
-    remaining: number | null
-  } | null>(null)
-
+  const LOCAL_TAC_ENDPOINT = "http://localhost:4318/analyze"
 
   const runAnalysis = async () => {
     if (!query.trim() || isLoading) return
@@ -89,64 +93,22 @@ export default function ChatPage() {
     ]
 
     try {
-      const email = localStorage.getItem("email") || "sean4128@gmail.com"
-
       const combinedInput = [query.trim(), layer1.trim(), layer2.trim(), context.trim()]
         .filter(Boolean)
         .join("\n")
 
-      const quotaRes = await fetch("/api/check_quota", {
-        method: "POST", 
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: email,
-        }),
-      })
-
-      const quotaData = await quotaRes.json()
-
-      if (!quotaRes.ok) {
-        throw new Error(quotaData.error || "Quota check failed")
-      }
-
-      setUsageInfo({
-        plan: quotaData.plan,
-        used: quotaData.used,
-        limit: quotaData.limit,
-        remaining: quotaData.remaining,
-      })
-
-      if (!quotaData.allowed) {
-        if (quotaData.plan === "free") {
-          alert("You have used all 5 free decision checks.")
-        } else if (quotaData.plan === "pro") {
-          alert("You have used all 150 Pro decision checks for this month.")
-        }
-        return
-      }
-
-
-
-      const response = await fetch("/api/analyze", {
+      const response = await fetch(LOCAL_TAC_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
           input: combinedInput,
           decision_state: decisionState,
         }),
       })
 
       const data = await response.json()
-
-      if (data.upgrade) {
-        window.open("https://sycds.com", "_blank")
-        return
-      }
 
       if (!response.ok) {
         throw new Error(data.error || "Analysis failed")
@@ -165,7 +127,7 @@ export default function ChatPage() {
 
       setRepairAnswer("")
     } catch (error) {
-      alert("Analysis unavailable. Please try again.")
+      alert("Local TAC runtime not detected. Please run: tac-agent start")
     } finally {
       timers.forEach(clearTimeout)
       setIsLoading(false)
@@ -179,59 +141,18 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const email = localStorage.getItem("email") || "sean4128@gmail.com"
-
-      const quotaRes = await fetch("/api/check_quota", {
+      const response = await fetch(LOCAL_TAC_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_id: email,
-        }),
-      })
-
-      const quotaData = await quotaRes.json()
-
-      if (!quotaRes.ok) {
-        throw new Error(quotaData.error || "Quota check failed")
-      }
-
-      setUsageInfo({
-        plan: quotaData.plan,
-        used: quotaData.used,
-        limit: quotaData.limit,
-        remaining: quotaData.remaining,
-      })
-
-      if (!quotaData.allowed) {
-        if (quotaData.plan === "free") {
-          alert("You have used all 5 free decision checks.")
-        } else if (quotaData.plan === "pro") {
-          alert("You have used all 150 Pro decision checks for this month.")
-        }
-        return
-      }
-
-
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
           input: repairAnswer.trim(),
           decision_state: decisionState,
         }),
       })
 
       const data = await response.json()
-
-      if (data.upgrade) {
-        window.open("https://sycds.com", "_blank")
-        return
-      }
 
       if (!response.ok) {
         throw new Error(data.error || "Analysis failed")
@@ -250,7 +171,7 @@ export default function ChatPage() {
 
       setRepairAnswer("")
     } catch (error) {
-      alert("Analysis unavailable. Please try again.")
+      alert("Local TAC runtime not detected. Please run: tac-agent start")
     } finally {
       setIsLoading(false)
     }
@@ -269,7 +190,6 @@ export default function ChatPage() {
     setShowStructuredFields(false)
   }
 
-
   function scoreLabel(value: number) {
     if (value >= 8) return "Strong"
     if (value >= 5) return "Moderate"
@@ -283,12 +203,18 @@ export default function ChatPage() {
         What decision are you trying to make?
       </h1>
 
+      <p className="text-gray-600 text-sm mb-6">
+        This customer runtime uses your own local LLM configuration.
+        Run <code>tac-agent start</code> before analyzing.
+      </p>
+
       <textarea
         placeholder="Example: Should I enroll in a job-related certification course even if time is limited?"
         className="w-full border rounded-lg p-4 mb-4 min-h-[100px]"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+
       <div className="mb-4">
         <button
           type="button"
@@ -301,28 +227,29 @@ export default function ChatPage() {
 
       {showStructuredFields && (
         <div className="space-y-4 mb-6">
-      <textarea
-        placeholder="Add background details that support this decision (optional)"
-        className="w-full border rounded-lg p-4 mb-4 min-h-[100px]"
-        value={layer1}
-        onChange={(e) => setLayer1(e.target.value)}
-      />
+          <textarea
+            placeholder="Add background details that support this decision (optional)"
+            className="w-full border rounded-lg p-4 min-h-[100px]"
+            value={layer1}
+            onChange={(e) => setLayer1(e.target.value)}
+          />
 
-      <textarea
-        placeholder="Add risks or concerns that could affect this decision (optional)"
-        className="w-full border rounded-lg p-4 mb-4 min-h-[100px]"
-        value={layer2}
-        onChange={(e) => setLayer2(e.target.value)}
-      />
+          <textarea
+            placeholder="Add risks or concerns that could affect this decision (optional)"
+            className="w-full border rounded-lg p-4 min-h-[100px]"
+            value={layer2}
+            onChange={(e) => setLayer2(e.target.value)}
+          />
 
-      <textarea
-        placeholder="Add limits, timing, or external constraints (optional)"
-        className="w-full border rounded-lg p-4 mb-6 min-h-[100px]"
-        value={context}
-        onChange={(e) => setContext(e.target.value)}
-      />
-     </div>
-     )}
+          <textarea
+            placeholder="Add limits, timing, or external constraints (optional)"
+            className="w-full border rounded-lg p-4 min-h-[100px]"
+            value={context}
+            onChange={(e) => setContext(e.target.value)}
+          />
+        </div>
+      )}
+
       <div className="flex gap-3 mb-6 flex-wrap">
         <button
           onClick={runAnalysis}
@@ -338,57 +265,7 @@ export default function ChatPage() {
         >
           Reset
         </button>
-        <button
-          onClick={async () => {
-            try {
-              const res = await fetch("/api/checkout", {
-                method: "POST",
-              })
-
-              const data = await res.json()
-
-              if (!res.ok) {
-                throw new Error(data.error || "Checkout failed")
-              }
-
-              if (data.url) {
-                window.location.href = data.url
-              }
-            } catch (error) {
-              alert("Unable to start checkout. Please try again.")
-            }
-          }}
-          className="border px-6 py-3 rounded-lg"
-        >
-          Upgrade to Pro ($29/month)for 150 decision checks
-        </button>
-        <button
-          onClick={() => window.open("https://sycds.com", "_blank")}
-          className="border px-6 py-3 rounded-lg"
-        >
-          explore sycds.com
-        </button>
-    
-        {usageInfo && (
-          <div className="mb-6 text-sm text-gray-600">
-            {usageInfo.plan === "unlimited" ? (
-              <span>Plan: Unlimited</span>
-            ) : (
-              <span>
-                Plan: {usageInfo.plan} · Used: {usageInfo.used}
-                {usageInfo.limit !== null ? ` / ${usageInfo.limit}` : ""} · Remaining:{" "}
-                {usageInfo.remaining ?? 0}
-              </span>
-            )}
-          </div>
-        )}
-
-   </div>
-
-      <p className="text-gray-600 text-sm mb-8">
-        TAC Agent helps you understand whether a decision makes sense, has hidden
-        risks, or is ready to move forward. The first 5 evaluations are free.
-      </p>
+      </div>
 
       {isLoading && (
         <p className="text-gray-500 mb-6">
@@ -412,7 +289,7 @@ export default function ChatPage() {
 
       {result && (
         <div className="mt-8 space-y-6">
-          <div className="mt-8 space-y-6">
+          <div>
             <div className="text-lg font-semibold mb-1">
               Readiness Score
             </div>
@@ -437,6 +314,7 @@ export default function ChatPage() {
                 : "Key structural elements still missing"}
             </div>
           </div>
+
           {result.missing_layer && (
             <div className="bg-yellow-50 border border-yellow-300 p-4 rounded-lg">
               <div className="font-semibold text-yellow-800">
@@ -463,36 +341,36 @@ export default function ChatPage() {
                 TAC Layer Validation
               </div>
 
-              {(
-                ["intent", "resources", "risk_boundary", "execution_horizon"] as const
-              ).map((layer) => {
-                const layerData = result.validation[layer]
+              {(["intent", "resources", "risk_boundary", "execution_horizon"] as const).map(
+                (layer) => {
+                  const layerData = result.validation[layer]
 
-                return (
-                  <div
-                    key={layer}
-                    className="mb-2 flex justify-between items-start gap-4"
-                  >
-                    <div className="font-medium">{layer}</div>
+                  return (
+                    <div
+                      key={layer}
+                      className="mb-2 flex justify-between items-start gap-4"
+                    >
+                      <div className="font-medium">{layer}</div>
 
-                    <div className="text-right max-w-md">
-                      <div
-                        className={
-                          layerData.valid ? "text-green-600" : "text-red-600"
-                        }
-                      >
-                        {layerData.valid ? "valid" : "invalid"}
-                      </div>
-
-                      {!layerData.valid && layerData.reason && (
-                        <div className="text-xs text-gray-600">
-                          {layerData.reason}
+                      <div className="text-right max-w-md">
+                        <div
+                          className={
+                            layerData.valid ? "text-green-600" : "text-red-600"
+                          }
+                        >
+                          {layerData.valid ? "valid" : "invalid"}
                         </div>
-                      )}
+
+                        {!layerData.valid && layerData.reason && (
+                          <div className="text-xs text-gray-600">
+                            {layerData.reason}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                }
+              )}
             </div>
           )}
 

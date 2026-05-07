@@ -623,9 +623,8 @@ export async function POST(req: Request) {
         : "",
       status: "decision_ready",
     })
-    await fetch(
-      `${origin}/api/log_run`,    
-      {
+    try {
+      const logRunResponse = await fetch(`${origin}/api/log_run`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -634,9 +633,13 @@ export async function POST(req: Request) {
           user_id: email,
           action: "tac_check",
         }),
-      }
-    )
+      })
 
+      const logResult = await logRunResponse.json()
+      console.log("usage logged:", logResult)
+    } catch (err) {
+      console.error("log_run failed:", err)
+    }
     return response
   } catch (error) {
     console.error("analyze route error:", error)

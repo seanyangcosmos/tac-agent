@@ -7,6 +7,7 @@ const UNLIMITED_EMAILS = ["sean4128@gmail.com"]
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  baseURL: "https//api.deepseek.com",
 })
 
 type DecisionState = {
@@ -201,7 +202,7 @@ ${input}
 `.trim()
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "Deepseek-V4-Flash",
     temperature: 0.1,
     messages: [
       { role: "system", content: "Return valid JSON only." },
@@ -272,7 +273,7 @@ ${JSON.stringify(decisionState, null, 2)}
 `.trim()
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "Deepseek-V4-Flash",
     temperature: 0.1,
     messages: [
       { role: "system", content: "Return valid JSON only." },
@@ -328,7 +329,7 @@ ${JSON.stringify(state, null, 2)}
 `.trim()
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "Deepseek-V4-Flash",
     temperature: 0.1,
     messages: [
       { role: "system", content: "Return valid JSON only." },

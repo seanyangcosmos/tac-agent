@@ -1,10 +1,11 @@
 import { generateText, Output } from "ai"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 
 const tacAnalysisSchema = z.object({
-  alignment: z.string().describe("Structural analysis of goal and constraint compatibility"),
-  tension: z.string().describe("Analysis of internal conflicts and competing optimization targets"),
-  convergence: z.string().describe("Assessment of whether the decision can stabilize into an executable path"),
+  alignment: z.string(),
+  tension: z.string(),
+  convergence: z.string(),
 })
 
 const TAC_SYSTEM_PROMPT = `You are TAC Agent, a decision structure analyzer based on the Target Alignment Criteria framework.
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   const { output } = await generateText({
-    model: "openai/gpt-4o",
+    model: openai("Deepseek-V4-Flash"),
     output: Output.object({
       schema: tacAnalysisSchema,
     }),
