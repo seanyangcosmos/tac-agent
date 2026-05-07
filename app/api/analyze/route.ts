@@ -202,7 +202,7 @@ ${input}
 `.trim()
 
   const completion = await openai.chat.completions.create({
-    model: "Deepseek-V4-Flash",
+    model: "deepseek-v4-flash",
     temperature: 0.1,
     messages: [
       { role: "system", content: "Return valid JSON only." },
@@ -273,7 +273,7 @@ ${JSON.stringify(decisionState, null, 2)}
 `.trim()
 
   const completion = await openai.chat.completions.create({
-    model: "Deepseek-V4-Flash",
+    model: "deepseek-v4-flash",
     temperature: 0.1,
     messages: [
       { role: "system", content: "Return valid JSON only." },
@@ -329,7 +329,7 @@ ${JSON.stringify(state, null, 2)}
 `.trim()
 
   const completion = await openai.chat.completions.create({
-    model: "Deepseek-V4-Flash",
+    model: "deepseek-v4-flash",
     temperature: 0.1,
     messages: [
       { role: "system", content: "Return valid JSON only." },
